@@ -1,0 +1,1235 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.31">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>Dualex Data Cleaner – CleanEX</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+</style>
+
+
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/quarto-nav/headroom.min.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-7c69b197886ae2a34062761d21e44731.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap-7eb7cf1bc6556a2c953c94abdfd57efa.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<meta name="shinylive:serviceworker_dir" content=".">
+<script src="site_libs/quarto-contrib/shinylive-0.10.12/shinylive/load-shinylive-sw.js" type="module"></script>
+<script src="site_libs/quarto-contrib/shinylive-0.10.12/shinylive/run-python-blocks.js" type="module"></script>
+<link href="site_libs/quarto-contrib/shinylive-0.10.12/shinylive/shinylive.css" rel="stylesheet">
+<link href="site_libs/quarto-contrib/shinylive-quarto-css/shinylive-quarto.css" rel="stylesheet">
+<script id="quarto-search-options" type="application/json">{
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+<style>html{ scroll-behavior: smooth; }</style>
+<style>
+h1.title {
+  display: none !important;
+}
+</style>
+
+
+<link rel="stylesheet" href="styles.css">
+</head>
+
+<body class="nav-fixed quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="./index.html">
+    <span class="navbar-title">CleanEX</span>
+    </a>
+  </div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item compact">
+    <a class="nav-link" href="mailto:mauro.maver@univr.it"> <i class="bi bi-envelope-fill" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-full page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar zindex-bottom">
+        
+    </div>
+<!-- main -->
+<main class="content column-page" id="quarto-document-content"><header id="title-block-header" class="quarto-title-block"></header>
+
+
+
+
+<pre class="shinylive-r" data-engine="r"><code>#| '!! shinylive warning !!': |
+#|   shinylive does not work in self-contained HTML documents.
+#|   Please set `embed-resources: false` in your metadata.
+#| standalone: true
+#| viewerHeight: 1000
+#| viewerWidth: "100%"
+
+# Caricamento silenzioso dei pacchetti per evitare blocchi su webR
+suppressPackageStartupMessages(library(shiny))
+suppressPackageStartupMessages(library(bslib))
+
+# ── Colonne escluse di default ────────────────────────────────────────────────
+DEFAULT_DROP &lt;- c("longitude", "latitude", "altitude", "qual_sat", "etal")
+
+COL_RENAME &lt;- c(
+  "jj/mm/aaaa" = "date",
+  "hh:mm:ss"   = "time",
+  "groupe"     = "group",
+  "mesure"     = "measure"
+)
+
+PARAM_COLS &lt;- c("Chl", "Flav", "Anth", "NBI")
+
+# ── Dizionario UI bilingue ────────────────────────────────────────────────────
+TR &lt;- list(
+  it = list(
+    app_subtitle   = "Pulizia automatica dei file CSV esportati da",
+    status_waiting = "In attesa",
+    status_loaded  = "✓ File caricato",
+    status_clean   = "✓ File pulito",
+    status_trt     = "✓ Trattamenti aggiunti",
+    status_final   = "✓ File finale pronto",
+    status_error   = "✗ Errore",
+    step1          = "1 — Carica il file",
+    file_placeholder = "Seleziona un file CSV dal Dualex…",
+    file_btn       = "Sfoglia",
+    step2          = "2 — Seleziona le colonne da mantenere",
+    sel_all        = "Seleziona tutte",
+    desel_all      = "Deseleziona tutte",
+    col_meta       = "colonne selezionate",
+    step3          = "3 — Genera il file pulito",
+    btn_clean      = "Pulisci",
+    btn_dl_clean   = "Scarica CSV pulito",
+    summary        = "Riepilogo",
+    renamed_lbl    = "Colonne rinominate automaticamente:",
+    stat_measures  = "misure",
+    stat_cols      = "colonne",
+    stat_groups    = "gruppi",
+    stat_file      = "nome file",
+    preview8       = "Anteprima (prime 8 righe)",
+    step4          = "4 — Assegna i trattamenti ai gruppi",
+    trt_hint       = "Inserisci il nome del trattamento per ciascun gruppo. Se lasciato vuoto, viene usato il numero del gruppo.",
+    trt_placeholder= "Trattamento per gruppo ",
+    btn_trt        = "Aggiungi trattamento",
+    trt_preview    = "Anteprima con trattamenti (prime 8 righe)",
+    step5          = "5 — Formato finale e download",
+    pivot_label    = "Trasponi parametri in formato long",
+    pivot_sub      = "Le colonne verranno unite in una colonna 'parameter' con i valori in 'value'",
+    btn_final      = "Genera file finale",
+    btn_dl_final   = "Scarica CSV finale",
+    stat_rows      = "righe",
+    stat_format    = "formato",
+    preview10      = "Anteprima (prime 10 righe)"
+  ),
+  en = list(
+    app_subtitle   = "Automatic cleaning of CSV files exported from",
+    status_waiting = "Waiting",
+    status_loaded  = "✓ File loaded",
+    status_clean   = "✓ File cleaned",
+    status_trt     = "✓ Treatments added",
+    status_final   = "✓ Final file ready",
+    status_error   = "✗ Error",
+    step1          = "1 — Load file",
+    file_placeholder = "Select a CSV file from the Dualex…",
+    file_btn       = "Browse",
+    step2          = "2 — Select columns to keep",
+    sel_all        = "Select all",
+    desel_all      = "Deselect all",
+    col_meta       = "columns selected",
+    step3          = "3 — Generate cleaned file",
+    btn_clean      = "Clean",
+    btn_dl_clean   = "Download cleaned CSV",
+    summary        = "Summary",
+    renamed_lbl    = "Automatically renamed columns:",
+    stat_measures  = "measurements",
+    stat_cols      = "columns",
+    stat_groups    = "groups",
+    stat_file      = "file name",
+    preview8       = "Preview (first 8 rows)",
+    step4          = "4 — Assign treatments to groups",
+    trt_hint       = "Enter the treatment name for each group. If left blank, the group number will be used.",
+    trt_placeholder= "Treatment for group ",
+    btn_trt        = "Add treatment",
+    trt_preview    = "Preview with treatments (first 8 rows)",
+    step5          = "5 — Final format and download",
+    pivot_label    = "Transpose parameters to long format",
+    pivot_sub      = "Columns will be merged into a 'parameter' column with values in 'value'",
+    btn_final      = "Generate final file",
+    btn_dl_final   = "Download final CSV",
+    stat_rows      = "rows",
+    stat_format    = "format",
+    preview10      = "Preview (first 10 rows)"
+  )
+)
+
+# ── Funzioni dati ─────────────────────────────────────────────────────────────
+parse_dx_raw &lt;- function(filepath) {
+  raw_bytes &lt;- readBin(filepath, what="raw", n=file.info(filepath)$size)
+  raw_bytes &lt;- raw_bytes[raw_bytes != as.raw(0x00)]
+  txt       &lt;- rawToChar(raw_bytes)
+  raw_lines &lt;- trimws(strsplit(txt, "\n")[[1]])
+
+  header_fields &lt;- trimws(strsplit(sub("^#","", raw_lines[5]), ";")[[1]])
+  data_lines    &lt;- raw_lines[6:length(raw_lines)]
+  skip_next     &lt;- 0L
+  keep_lines    &lt;- character(0)
+
+  for (line in data_lines) {
+    if (line == "") { 
+      if (skip_next &gt; 0L) skip_next &lt;- skip_next - 1L
+      next 
+    }
+    if (startsWith(line,"#Groupe")) { 
+      skip_next &lt;- 3L
+      next 
+    }
+    if (startsWith(line,"#")) { 
+      if (skip_next &gt; 0L) skip_next &lt;- skip_next - 1L
+      next 
+    }
+    if (skip_next &gt; 0L) { 
+      skip_next &lt;- skip_next - 1L
+      next 
+    }
+    keep_lines &lt;- c(keep_lines, line)
+  }
+
+  n_cols     &lt;- length(header_fields)
+  split_rows &lt;- lapply(strsplit(keep_lines,";"), function(x){ length(x)&lt;-n_cols; x[is.na(x)]&lt;-""; x })
+  df           &lt;- as.data.frame(do.call(rbind, split_rows), stringsAsFactors=FALSE)
+  colnames(df) &lt;- header_fields
+  df
+}
+
+apply_rename &lt;- function(df) {
+  for (old in names(COL_RENAME)) {
+    idx &lt;- which(tolower(colnames(df)) == tolower(old))
+    if (length(idx)) colnames(df)[idx[1]] &lt;- COL_RENAME[[old]]
+  }
+  df
+}
+
+pivot_long &lt;- function(df) {
+  param_present &lt;- PARAM_COLS[PARAM_COLS %in% colnames(df)]
+  if (!length(param_present)) return(df)
+  id_cols   &lt;- setdiff(colnames(df), param_present)
+  id_data   &lt;- df[, id_cols, drop=FALSE]
+  long_rows &lt;- do.call(rbind, lapply(param_present, function(p) {
+    tmp &lt;- id_data; tmp$parameter &lt;- p; tmp$value &lt;- df[[p]]; tmp
+  }))
+  long_rows &lt;- long_rows[order(rep(seq_len(nrow(df)), length(param_present))), ]
+  rownames(long_rows) &lt;- NULL
+  long_rows
+}
+
+# ── Configurazione Tema bslib ─────────────────────────────────────────────────
+mio_tema &lt;- bs_theme(
+  version = 5,
+  base_font = "system-ui", heading_font = "system-ui",
+  bg="#F7F8FA", fg="#1A1D23", primary="#2D6A4F", secondary="#B7D4C6",
+  border_radius="6px"
+)
+
+# ── UI ───────────────────────────────────────────────────────────────────────
+ui &lt;- page_fluid(
+  title = "Dualex Data Cleaner 🧹",
+  theme = mio_tema,
+
+  tags$head(
+    tags$style(HTML("
+      html { font-size: 110% !important; }
+
+      html, body, .container-fluid, .main-container, #shiny-html-output { 
+        padding: 1rem 1.5rem !important; 
+        margin: 0 !important;
+        background:#F7F8FA; 
+        max-width: 100% !important; 
+        width: 100% !important; 
+      }
+      
+      .cell, .cell-output-display, iframe, .page-columns .content, .page-columns, .quarto-layout-panel { 
+        max-width: 100% !important; 
+        width: 100% !important; 
+      }
+      
+      .preview-wrap table, .shiny-table, table.table { 
+        width: 100% !important; 
+        max-width: 100% !important;
+        display: table !important;
+      }
+      
+      .dx-card {
+        background:#fff; border:1px solid #E2E6EA; border-radius:10px;
+        padding:1.8rem 2.2rem; margin-bottom:1.4rem;
+        box-shadow:0 1px 4px rgba(0,0,0,.06);
+        width: 100% !important;
+      }
+      
+      .app-title { font-size:1.6rem; font-weight:700; letter-spacing:-.3px; color:#1A1D23; margin-bottom:.2rem; }
+      .app-subtitle { font-size:.95rem; color:#6B7280; margin-bottom:0; }
+      .section-label { font-size:.8rem; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:#6B7280; margin-bottom:.8rem; }
+
+      .lang-switcher {
+        display:inline-flex; align-items:center; gap:0;
+        border:1.5px solid #D1D5DB; border-radius:6px; overflow:hidden;
+        font-size:.85rem; font-weight:700;
+      }
+      .lang-btn {
+        padding:.35rem .8rem; cursor:pointer; background:#fff; color:#6B7280;
+        border:none; border-right:1px solid #D1D5DB;
+        transition:all .12s; user-select:none; line-height:1.4;
+      }
+      .lang-btn:last-child { border-right:none; }
+      .lang-btn.active { background:#2D6A4F; color:#fff; }
+      .lang-btn:hover:not(.active) { background:#F3F4F6; color:#1A1D23; }
+
+      .col-grid { display:flex; flex-wrap:wrap; gap:.5rem; margin-bottom:1rem; }
+      .col-toggle {
+        display:inline-flex; align-items:center; gap:.4rem; padding:.4rem .9rem;
+        border-radius:999px; border:1.5px solid #D1D5DB; background:#fff;
+        font-size:.9rem; font-weight:500; color:#374151;
+        cursor:pointer; transition:all .12s; user-select:none;
+      }
+      .col-toggle.active  { border-color:#2D6A4F; background:#EAF4EF; color:#1C4430; }
+      .col-toggle.active::before { content:'✓'; font-size:.8rem; color:#2D6A4F; font-weight:700; }
+      .col-toggle.excluded { border-color:#D1D5DB; background:#F9FAFB; color:#9CA3AF; text-decoration:line-through; }
+      .toggle-meta { font-size:.85rem; color:#6B7280; margin-top:.4rem; margin-bottom:0; }
+      .toggle-actions { display:flex; gap:.8rem; margin-bottom:.9rem; }
+      .link-btn { background:none; border:none; padding:0; font-size:.85rem; color:#2D6A4F; font-weight:600; cursor:pointer; text-decoration:underline; }
+      .link-btn:hover { color:#1C4430; }
+
+      .badge-idle  { background:#E9ECF0; color:#4B5563; }
+      .badge-ok    { background:#D1FAE5; color:#065F46; }
+      .badge-error { background:#FEE2E2; color:#991B1B; }
+      .status-badge { display:inline-block; font-size:.85rem; font-weight:600; padding:.3em .85em; border-radius:999px; }
+
+      .shiny-input-container { width:100% !important; }
+      .form-group { margin-bottom:0; }
+      .form-control, .input-group-text, .form-select { font-size: .95rem !important; padding: .45rem .75rem !important; }
+
+      #clean_btn, #trt_btn, #pivot_btn {
+        border:none; color:#fff; font-weight:600; font-size:1rem;
+        padding:.6rem 1.7rem; border-radius:6px; transition:background .15s;
+      }
+      #clean_btn { background:#2D6A4F; } #clean_btn:hover { background:#245740; }
+      #trt_btn   { background:#1D4ED8; } #trt_btn:hover   { background:#1E40AF; }
+      #pivot_btn { background:#7C3AED; } #pivot_btn:hover { background:#6D28D9; }
+
+      .dl-wrap .btn {
+        border:1.5px solid #2D6A4F; color:#2D6A4F; background:transparent;
+        font-weight:600; font-size:1rem; padding:.6rem 1.7rem;
+        border-radius:6px; transition:all .15s;
+      }
+      .dl-wrap .btn:hover { background:#EAF4EF; }
+
+      .trt-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:.85rem; margin-bottom:1.2rem; }
+      .trt-row  { display:flex; align-items:center; gap:.6rem; }
+      .trt-badge {
+        flex-shrink:0; min-width:2.4rem; text-align:center;
+        background:#F3F4F6; border:1px solid #E2E6EA; border-radius:6px;
+        padding:.35rem .6rem; font-size:.85rem; font-weight:700; color:#374151;
+      }
+      .trt-input {
+        flex:1; border:1.5px solid #D1D5DB; border-radius:6px;
+        padding:.4rem .7rem; font-size:.9rem; color:#1A1D23;
+        outline:none; transition:border-color .12s;
+      }
+      .trt-input:focus { border-color:#2D6A4F; }
+
+      .pivot-toggle {
+        display:flex; align-items:center; gap:.85rem; padding:1rem 1.2rem;
+        border-radius:8px; border:1.5px solid #E2E6EA; background:#FAFAFA;
+        margin-bottom:1.2rem; cursor:pointer; transition:all .12s;
+      }
+      .pivot-toggle:hover { border-color:#7C3AED; background:#F5F3FF; }
+      .pivot-toggle.on    { border-color:#7C3AED; background:#F5F3FF; }
+      .pivot-switch {
+        width:2.6rem; height:1.4rem; border-radius:999px;
+        background:#D1D5DB; position:relative; flex-shrink:0; transition:background .15s;
+      }
+      .pivot-toggle.on .pivot-switch { background:#7C3AED; }
+      .pivot-switch::after {
+        content:''; position:absolute; top:.18rem; left:.18rem;
+        width:1.04rem; height:1.04rem; border-radius:50%;
+        background:#fff; transition:left .15s;
+      }
+      .pivot-toggle.on .pivot-switch::after { left:1.38rem; }
+      .pivot-label { font-size:.95rem; font-weight:600; color:#374151; }
+      .pivot-sub   { font-size:.82rem; color:#6B7280; margin-top:.15rem; }
+
+      .stats-strip {
+        display:flex; flex-wrap:wrap; gap:2.2rem; padding:1rem 1.4rem;
+        background:#F0FBF5; border-radius:6px; border:1px solid #C6E8D6; margin-bottom:1.4rem;
+      }
+      .stat-item { display:flex; flex-direction:column; }
+      .stat-val  { font-size:1.4rem; font-weight:700; color:#2D6A4F; line-height:1; }
+      .stat-lbl  { font-size:.78rem; color:#6B7280; margin-top:.25rem; }
+      
+      .preview-wrap { overflow-x:auto; border-radius:6px; border:1px solid #E2E6EA; width:100% !important; }
+      .preview-wrap table { font-size:.88rem !important; }
+      .preview-wrap thead th { background:#F3F4F6; font-weight:700; color:#374151; border-bottom:2px solid #D1D5DB; padding:.55rem .8rem; }
+      .preview-wrap tbody td { padding:.45rem .8rem; color:#4B5563; border-bottom:1px solid #F0F1F3; }
+      .preview-wrap tbody tr:last-child td { border-bottom:none; }
+      
+      .section-divider { border:none; border-top:1px dashed #D1D5DB; margin:1.4rem 0; }
+      .rename-chips { display:flex; flex-wrap:wrap; gap:.5rem; margin-bottom:.4rem; }
+      .rename-chip { font-size:.8rem; padding:.25rem .7rem; border-radius:4px; background:#FFF7ED; border:1px solid #FED7AA; color:#92400E; font-family:monospace; }
+      .rename-chip .arr { color:#9CA3AF; margin:0 .3rem; }
+      .rename-chip .to  { color:#1C4430; font-weight:700; }
+    "))),
+
+    tags$script(HTML("
+      function setLang(lang) {
+        document.querySelectorAll('.lang-btn').forEach(function(b){
+          b.classList.toggle('active', b.getAttribute('data-lang') === lang);
+        });
+        Shiny.setInputValue('ui_lang', lang, {priority:'event'});
+      }
+
+      Shiny.addCustomMessageHandler('downloadCSV', function(msg) {
+        var blob = new Blob([msg.content], { type: 'text/csv;charset=utf-8;' });
+        var link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = msg.filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      });
+
+      function toggleCol(el){ el.classList.toggle('active'); el.classList.toggle('excluded'); updateMeta(); }
+      
+      function setAll(state){
+        document.querySelectorAll('.col-toggle').forEach(function(el){
+          el.classList.toggle('active',state); el.classList.toggle('excluded',!state);
+        }); updateMeta();
+      }
+      
+      function updateMeta(){
+        var active=document.querySelectorAll('.col-toggle.active').length;
+        var total =document.querySelectorAll('.col-toggle').length;
+        var sel=[];
+        document.querySelectorAll('.col-toggle.active').forEach(function(t){ sel.push(t.getAttribute('data-col')); });
+        Shiny.setInputValue('selected_cols',sel,{priority:'event'});
+        Shiny.setInputValue('active_col_count',active,{priority:'event'});
+      }
+
+      function togglePivot(){
+        var el=document.getElementById('pivot-toggle');
+        var on=el.classList.toggle('on');
+        Shiny.setInputValue('pivot_long',on,{priority:'event'});
+      }
+
+      $(document).on('shiny:value', function(e){
+        if (e.name==='col_selector_panel') setTimeout(updateMeta,50);
+      });
+      
+      $(document).on('shiny:connected', function() {
+        Shiny.addCustomMessageHandler('updateColMeta', function(msg){
+          var el = document.getElementById('col-meta');
+          if (el) el.textContent = msg.text;
+        });
+      });
+    ")),
+
+  # Header
+  div(class="dx-card",
+    div(style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:.5rem;",
+      div(
+        div(class="app-title", "Dualex Data Cleaner 🧹"),
+        uiOutput("app_subtitle")
+      ),
+      div(style="display:flex;align-items:center;gap:.8rem;",
+        uiOutput("status_badge"),
+        div(class="lang-switcher",
+          tags$button(class="lang-btn active", `data-lang`="it", onclick="setLang('it')", "IT"),
+          tags$button(class="lang-btn",        `data-lang`="en", onclick="setLang('en')", "EN")
+        )
+      )
+    )
+  ),
+
+  uiOutput("step1_panel"),
+  uiOutput("col_selector_panel"),
+  uiOutput("step3_panel"),
+  uiOutput("preview_panel"),
+  uiOutput("treatment_panel"),
+  uiOutput("pivot_panel"),
+  
+  # Footer / Credits
+  hr(class="section-divider"),
+  div(style="text-align: center; font-size: 0.85rem; color: #6B7280; padding: 0.5rem 0 1.5rem 0;",
+    uiOutput("app_credits")
+  )
+)
+
+# ── Server ───────────────────────────────────────────────────────────────────
+server &lt;- function(input, output, session) {
+
+  rv &lt;- reactiveValues(
+    df_raw=NULL, df_clean=NULL, df_trt=NULL, df_final=NULL,
+    groups=NULL, error=NULL, base_name=NULL
+  )
+
+  lang &lt;- reactive({ if (is.null(input$ui_lang)) "it" else input$ui_lang })
+  t    &lt;- reactive({ TR[[lang()]] })
+
+  output$app_subtitle &lt;- renderUI({
+    p(class="app-subtitle", t()$app_subtitle, " ", tags$strong("Dualex DX4.5"), "")
+  })
+
+  # Creazione dinamica dei crediti bilingue con i link forniti
+  output$app_credits &lt;- renderUI({
+    if (lang() == "it") {
+      tagList(
+        "Applicazione creata da ", 
+        tags$a(href="https://www.mauromaver.eu", target="_blank", style="color: #2D6A4F; font-weight: 700; text-decoration: underline;", "Mauro Maver"), 
+        " || Se riscontri problemi o bug, visita il mio profilo ",
+        tags$a(href="https://github.com/Stramon1um", target="_blank", style="color: #2D6A4F; font-weight: 600; text-decoration: underline;", "GitHub"),
+        " oppure inviami una ",
+        tags$a(href="mailto:mauro.maver@univr.it", style="color: #2D6A4F; font-weight: 600; text-decoration: underline;", "mail"),
+        " 😊"
+      )
+    } else {
+      tagList(
+        "Application developed by ", 
+        tags$a(href="https://www.mauromaver.eu", target="_blank", style="color: #2D6A4F; font-weight: 700; text-decoration: underline;", "Mauro Maver"), 
+        " || If you encounter any bugs, please check my ",
+        tags$a(href="https://github.com/Stramon1um", target="_blank", style="color: #2D6A4F; font-weight: 600; text-decoration: underline;", "GitHub"),
+        " profile or send me an ",
+        tags$a(href="mailto:mauro.maver@univr.it", style="color: #2D6A4F; font-weight: 600; text-decoration: underline;", "email"),
+        " 😊"
+      )
+    }
+  })
+
+  output$step1_panel &lt;- renderUI({
+    div(class="dx-card",
+      p(class="section-label", t()$step1),
+      fileInput("file_in", label=NULL, accept=c(".csv","text/csv"),
+                placeholder=t()$file_placeholder, buttonLabel=t()$file_btn)
+    )
+  })
+
+  output$step3_panel &lt;- renderUI({
+    req(rv$df_raw)
+    div(class="dx-card",
+      p(class="section-label", t()$step3),
+      div(style="display:flex;gap:.8rem;align-items:center;flex-wrap:wrap;",
+        actionButton("clean_btn", t()$btn_clean, icon=icon("broom")),
+        div(class="dl-wrap", uiOutput("dl_ui"))
+      )
+    )
+  })
+
+  observeEvent(input$file_in, {
+    rv$df_raw &lt;- NULL; rv$df_clean &lt;- NULL; rv$df_trt &lt;- NULL; rv$df_final &lt;- NULL; rv$groups &lt;- NULL; rv$error &lt;- NULL
+    tryCatch({
+      rv$df_raw    &lt;- parse_dx_raw(input$file_in$datapath)
+      rv$base_name &lt;- sub("\\.csv$","", input$file_in$name, ignore.case=TRUE)
+    }, error=function(e) { rv$error &lt;- conditionMessage(e) })
+  })
+
+  output$col_selector_panel &lt;- renderUI({
+    req(rv$df_raw)
+    all_cols &lt;- colnames(rv$df_raw)
+    n_active &lt;- sum(!tolower(all_cols) %in% tolower(DEFAULT_DROP))
+    pills &lt;- lapply(all_cols, function(col) {
+      is_active &lt;- !tolower(col) %in% tolower(DEFAULT_DROP)
+      tags$span(class=paste("col-toggle", if(is_active) "active" else "excluded"),
+                `data-col`=col, onclick="toggleCol(this);", col)
+    })
+    div(class="dx-card",
+      p(class="section-label", t()$step2),
+      div(class="toggle-actions",
+        tags$button(class="link-btn", onclick="setAll(true)",  t()$sel_all),
+        tags$button(class="link-btn", onclick="setAll(false)", t()$desel_all)
+      ),
+      div(class="col-grid", pills),
+      p(class="toggle-meta", id="col-meta", paste(n_active, "di", length(all_cols), t()$col_meta))
+    )
+  })
+
+  observe({
+    req(rv$df_raw)
+    active &lt;- if (!is.null(input$active_col_count)) input$active_col_count else sum(!tolower(colnames(rv$df_raw)) %in% tolower(DEFAULT_DROP))
+    total  &lt;- ncol(rv$df_raw)
+    session$sendCustomMessage("updateColMeta", list(text=paste(active, "of", total, t()$col_meta)))
+  })
+
+  observeEvent(input$clean_btn, {
+    req(rv$df_raw)
+    rv$df_clean &lt;- NULL; rv$df_trt &lt;- NULL; rv$df_final &lt;- NULL; rv$groups &lt;- NULL; rv$error &lt;- NULL
+    tryCatch({
+      df   &lt;- rv$df_raw
+      keep &lt;- input$selected_cols
+      if (is.null(keep) || !length(keep)) {
+        keep &lt;- colnames(df)[!tolower(colnames(df)) %in% tolower(DEFAULT_DROP)]
+      }
+      df &lt;- df[, colnames(df)[colnames(df) %in% keep], drop=FALSE]
+      df &lt;- apply_rename(df)
+      grp_col &lt;- grep("^group$", colnames(df), ignore.case=TRUE, value=TRUE)
+      if (!length(grp_col)) grp_col &lt;- grep("group", colnames(df), ignore.case=TRUE, value=TRUE)
+      if (length(grp_col)) {
+        grps &lt;- unique(df[[grp_col[1]]])
+        nums &lt;- suppressWarnings(as.numeric(grps))
+        rv$groups &lt;- if (!anyNA(nums)) grps[order(nums)] else sort(grps)
+      }
+      rv$df_clean &lt;- df
+    }, error=function(e) { rv$error &lt;- conditionMessage(e) })
+  })
+
+  observeEvent(input$dl_btn, {
+    req(rv$df_clean)
+    filename &lt;- paste0(rv$base_name, "_clean.csv")
+    con &lt;- textConnection("csv_text", "w")
+    write.table(rv$df_clean, con, sep=";", row.names=FALSE, quote=FALSE, na="")
+    close(con)
+    csv_string &lt;- paste(csv_text, collapse="\n")
+    session$sendCustomMessage("downloadCSV", list(filename=filename, content=csv_string))
+  })
+
+  observeEvent(input$dl_final_btn, {
+    req(rv$df_final)
+    filename &lt;- paste0(rv$base_name, "_final.csv")
+    con &lt;- textConnection("csv_text", "w")
+    write.table(rv$df_final, con, sep=";", row.names=FALSE, quote=FALSE, na="")
+    close(con)
+    csv_string &lt;- paste(csv_text, collapse="\n")
+    session$sendCustomMessage("downloadCSV", list(filename=filename, content=csv_string))
+  })
+
+  observeEvent(input$trt_btn, {
+    req(rv$df_clean, rv$groups)
+    rv$df_trt &lt;- NULL; rv$df_final &lt;- NULL; rv$error &lt;- NULL
+    tryCatch({
+      df      &lt;- rv$df_clean
+      grp_col &lt;- grep("^group$", colnames(df), ignore.case=TRUE, value=TRUE)
+      if (!length(grp_col)) grp_col &lt;- grep("group", colnames(df), ignore.case=TRUE, value=TRUE)
+      grp_col &lt;- grp_col[1]
+      
+      trt_vals &lt;- c()
+      for(g in rv$groups) {
+        val &lt;- input[[paste0("trt_",g)]]
+        trt_vals &lt;- c(trt_vals, if (is.null(val) || trimws(val)=="") as.character(g) else trimws(val))
+      }
+      trt_map &lt;- setNames(trt_vals, rv$groups)
+      
+      df$treatment &lt;- trt_map[df[[grp_col]]]
+      grp_pos &lt;- which(colnames(df)==grp_col)
+      rest    &lt;- setdiff(colnames(df), c(colnames(df)[seq_len(grp_pos)],"treatment"))
+      rv$df_trt &lt;- df[, c(colnames(df)[seq_len(grp_pos)],"treatment",rest), drop=FALSE]
+    }, error=function(e) { rv$error &lt;- conditionMessage(e) })
+  })
+
+  observeEvent(input$pivot_btn, {
+    req(rv$df_trt)
+    rv$df_final &lt;- NULL; rv$error &lt;- NULL
+    tryCatch({
+      rv$df_final &lt;- if (isTRUE(input$pivot_long)) pivot_long(rv$df_trt) else rv$df_trt
+    }, error=function(e) { rv$error &lt;- conditionMessage(e) })
+  })
+
+  output$status_badge &lt;- renderUI({
+    tx &lt;- t()
+    if (!is.null(rv$error))         div(class="status-badge badge-error", tx$status_error)
+    else if (!is.null(rv$df_final)) div(class="status-badge badge-ok",   tx$status_final)
+    else if (!is.null(rv$df_trt))   div(class="status-badge badge-ok",   tx$status_trt)
+    else if (!is.null(rv$df_clean)) div(class="status-badge badge-ok",   tx$status_clean)
+    else if (!is.null(rv$df_raw))   div(class="status-badge badge-ok",   tx$status_loaded)
+    else                             div(class="status-badge badge-idle", tx$status_waiting)
+  })
+
+  output$dl_ui &lt;- renderUI({
+    req(rv$df_clean)
+    div(class="dl-wrap", actionButton("dl_btn", t()$btn_dl_clean, icon=icon("download")))
+  })
+
+  output$dl_final_ui &lt;- renderUI({
+    req(rv$df_final)
+    div(class="dl-wrap", actionButton("dl_final_btn", t()$btn_dl_final, icon=icon("download")))
+  })
+
+  output$preview_panel &lt;- renderUI({
+    tx &lt;- t()
+    if (!is.null(rv$error) &amp;&amp; is.null(rv$df_clean)) {
+      div(class="dx-card", div(style="color:#991B1B;font-size:.9rem;", icon("circle-exclamation")," ",rv$error))
+    } else if (!is.null(rv$df_clean)) {
+      df  &lt;- rv$df_clean
+      grp &lt;- if (!is.null(rv$groups)) length(rv$groups) else "—"
+      applied &lt;- COL_RENAME[names(COL_RENAME) %in% tolower(colnames(rv$df_raw))]
+      chips   &lt;- lapply(names(applied), function(old) {
+        div(class="rename-chip", span(old), span(class="arr","→"), span(class="to", applied[[old]]))
+      })
+      div(class="dx-card",
+        p(class="section-label", tx$summary),
+        if (length(chips)) tagList(
+          p(style="font-size:.82rem;color:#6B7280;margin-bottom:.4rem;", tx$renamed_lbl),
+          div(class="rename-chips", chips), hr(class="section-divider")
+        ),
+        div(class="stats-strip",
+          div(class="stat-item", span(class="stat-val",nrow(df)), span(class="stat-lbl",tx$stat_measures)),
+          div(class="stat-item", span(class="stat-val",ncol(df)), span(class="stat-lbl",tx$stat_cols)),
+          div(class="stat-item", span(class="stat-val",grp),      span(class="stat-lbl",tx$stat_groups)),
+          div(class="stat-item", span(class="stat-val",paste0(rv$base_name,"_clean.csv")), span(class="stat-lbl",tx$stat_file))
+        ),
+        p(class="section-label", tx$preview8),
+        div(class="preview-wrap", tableOutput("preview_tbl"))
+      )
+    }
+  })
+  output$preview_tbl &lt;- renderTable({ req(rv$df_clean); head(rv$df_clean,8) },
+    striped=FALSE,hover=TRUE,bordered=FALSE,spacing="xs",na="")
+
+  output$treatment_panel &lt;- renderUI({
+    req(rv$df_clean, rv$groups)
+    tx &lt;- t()
+    inputs &lt;- lapply(rv$groups, function(g) {
+      div(class="trt-row",
+        div(class="trt-badge", g),
+        tags$input(type="text", id=paste0("trt_",g), class="trt-input",
+          placeholder=paste0(tx$trt_placeholder, g),
+          oninput=paste0("Shiny.setInputValue('trt_",g,"',this.value,{priority:'event'})"))
+      )
+    })
+    div(class="dx-card",
+      p(class="section-label", tx$step4),
+      p(style="font-size:.88rem;color:#6B7280;margin-bottom:1.1rem;", tx$trt_hint),
+      div(class="trt-grid", inputs),
+      hr(class="section-divider"),
+      div(style="display:flex;gap:.8rem;align-items:center;flex-wrap:wrap;",
+        actionButton("trt_btn", tx$btn_trt, icon=icon("tags")),
+        uiOutput("trt_preview_wrap")
+      )
+    )
+  })
+  output$trt_preview_wrap &lt;- renderUI({
+    req(rv$df_trt)
+    tagList(
+      hr(class="section-divider"),
+      p(class="section-label", t()$trt_preview),
+      div(class="preview-wrap", tableOutput("trt_preview_tbl"))
+    )
+  })
+  output$trt_preview_tbl &lt;- renderTable({ req(rv$df_trt); head(rv$df_trt,8) },
+    striped=FALSE,hover=TRUE,bordered=FALSE,spacing="xs",na="")
+
+  output$pivot_panel &lt;- renderUI({
+    req(rv$df_trt)
+    tx           &lt;- t()
+    params_found &lt;- PARAM_COLS[PARAM_COLS %in% colnames(rv$df_trt)]
+    div(class="dx-card",
+      p(class="section-label", tx$step5),
+      if (length(params_found)) {
+        div(id="pivot-toggle", class="pivot-toggle", onclick="togglePivot();",
+          div(class="pivot-switch"),
+          div(div(class="pivot-label", tx$pivot_label),
+              div(class="pivot-sub",   paste(tx$pivot_sub, paste(params_found, collapse=", "))))
+        )
+      },
+      div(style="display:flex;gap:.8rem;align-items:center;flex-wrap:wrap;margin-top:.5rem;",
+        actionButton("pivot_btn", tx$btn_final, icon=icon("file-csv")),
+        uiOutput("dl_final_ui")
+      ),
+      uiOutput("final_preview_wrap")
+    )
+  })
+
+  output$final_preview_wrap &lt;- renderUI({
+    req(rv$df_final)
+    tx &lt;- t()
+    fmt_val &lt;- if(isTRUE(input$pivot_long)) "long" else "wide"
+    tagList(
+      hr(class="section-divider"),
+      div(class="stats-strip",
+        div(class="stat-item", span(class="stat-val",nrow(rv$df_final)), span(class="stat-lbl",tx$stat_rows)),
+        div(class="stat-item", span(class="stat-val",ncol(rv$df_final)), span(class="stat-lbl",tx$stat_cols)),
+        div(class="stat-item", span(class="stat-val", fmt_val),          span(class="stat-lbl", tx$stat_format)),
+        div(class="stat-item", span(class="stat-val", paste0(rv$base_name,"_final.csv")), span(class="stat-lbl", tx$stat_file))
+      ),
+      p(class="section-label", tx$preview10),
+      div(class="preview-wrap", tableOutput("final_preview_tbl"))
+    )
+  })
+  output$final_preview_tbl &lt;- renderTable({ req(rv$df_final); head(rv$df_final,10) },
+    striped=FALSE,hover=TRUE,bordered=FALSE,spacing="xs",na="")
+}
+
+shinyApp(ui, server)</code></pre>
+
+
+
+<a onclick="window.scrollTo(0, 0); return false;" role="button" id="quarto-back-to-top"><i class="bi bi-arrow-up"></i> Back to top</a></main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+<footer class="footer">
+  <div class="nav-footer">
+    <div class="nav-footer-left">
+      &nbsp;
+    </div>   
+    <div class="nav-footer-center">
+      &nbsp;
+    </div>
+    <div class="nav-footer-right">
+<p>Creato da Mauro Maver</p>
+</div>
+  </div>
+</footer>
+
+
+
+
+<script src="site_libs/quarto-html/zenscroll-min.js"></script>
+</body></html>

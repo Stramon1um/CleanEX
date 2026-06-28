@@ -1,22 +1,18 @@
 project:
   type: website
   output-dir: docs
+  
+filters:
+  - shinylive
 
 website:
-  title: "Lab Chimica Agraria "
-  description: "Descrizione..."
-  search: true
+  title: "CleanEX"
+  #description: "Descrizione..."
+  search: false
   page-navigation: true
   back-to-top-navigation: true
   bread-crumbs: false
   navbar:
-    left:
-      - href: reagenti.qmd
-        text: 💥 Reagenti
-      - href: consumabili.qmd
-        text: 🧪 Consumabili
-      - href: protocolli.qmd
-        text: 📄 Protocolli
     right:
       - icon: envelope-fill
         href: mailto:mauro.maver@univr.it
@@ -33,6 +29,7 @@ format:
     css: styles.css
     toc: true
     toc-depth: 3
+    embed-resources: false
 
 editor: source
 
