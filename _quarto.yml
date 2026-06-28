@@ -25,7 +25,7 @@ website:
 format:
   html:
     smooth-scroll: true
-    theme: flatly
+    theme: Minty
     css: styles.css
     toc: true
     toc-depth: 3
