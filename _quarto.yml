@@ -1,0 +1,41 @@
+project:
+  type: website
+  output-dir: docs
+
+website:
+  title: "Lab Chimica Agraria "
+  description: "Descrizione..."
+  search: true
+  page-navigation: true
+  back-to-top-navigation: true
+  bread-crumbs: false
+  navbar:
+    left:
+      - href: reagenti.qmd
+        text: 💥 Reagenti
+      - href: consumabili.qmd
+        text: 🧪 Consumabili
+      - href: protocolli.qmd
+        text: 📄 Protocolli
+    right:
+      - icon: envelope-fill
+        href: mailto:mauro.maver@univr.it
+    background: primary
+  page-footer: 
+    right: "Creato da Mauro Maver" 
+    background: primary
+    foreground: primary
+
+format:
+  html:
+    smooth-scroll: true
+    theme: flatly
+    css: styles.css
+    toc: true
+    toc-depth: 3
+
+editor: source
+
+execute:
+  freeze: auto # re-render only when source changes 
+
