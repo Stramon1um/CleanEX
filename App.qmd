@@ -1,5 +1,5 @@
 ---
-#title: "ciao"
+title: "Dualex Data Cleaner"
 pagetitle: "Dualex Data Cleaner"
 format: 
   html:
@@ -41,6 +41,8 @@ PARAM_COLS <- c("Chl", "Flav", "Anth", "NBI")
 TR <- list(
   it = list(
     app_subtitle   = "Pulizia automatica dei file CSV esportati da",
+    privacy_title  = "🔒 Sicurezza dei Dati & Privacy al 100%",
+    privacy_text   = "Questa applicazione viene eseguita interamente all'interno del tuo browser tramite tecnologia WebAssembly. I tuoi dati non lasciano mai il tuo computer e nessun file viene inviato a server esterni. È utilizzabile anche offline. Nota: il primo avvio potrebbe essere necessario qualche secondo per il caricamento dell'ambiente R.",
     status_waiting = "In attesa",
     status_loaded  = "✓ File caricato",
     status_clean   = "✓ File pulito",
@@ -80,6 +82,8 @@ TR <- list(
   ),
   en = list(
     app_subtitle   = "Automatic cleaning of CSV files exported from",
+    privacy_title  = "🔒 100% Data Security & Privacy",
+    privacy_text   = "This application runs entirely within your browser using WebAssembly technology. Your data never leaves your computer, and no files are sent to external servers. It can also be used offline. Note: the initial launch may take a few seconds to load the R environment.",
     status_waiting = "Waiting",
     status_loaded  = "✓ File loaded",
     status_clean   = "✓ File cleaned",
@@ -219,6 +223,13 @@ ui <- page_fluid(
         background:#fff; border:1px solid #E2E6EA; border-radius:10px;
         padding:1.8rem 2.2rem; margin-bottom:1.4rem;
         box-shadow:0 1px 4px rgba(0,0,0,.06);
+        width: 100% !important;
+      }
+      
+      .privacy-card {
+        background:#EEFFFX; border:1px solid #C6E8D6; border-radius:10px;
+        padding:1.2rem 1.8rem; margin-bottom:1.4rem;
+        box-shadow:0 1px 3px rgba(0,0,0,.04);
         width: 100% !important;
       }
       
@@ -379,7 +390,6 @@ ui <- page_fluid(
       $(document).on('shiny:value', function(e){
         if (e.name==='col_selector_panel') setTimeout(updateMeta,50);
       });
-      
       $(document).on('shiny:connected', function() {
         Shiny.addCustomMessageHandler('updateColMeta', function(msg){
           var el = document.getElementById('col-meta');
@@ -404,6 +414,9 @@ ui <- page_fluid(
       )
     )
   ),
+
+  # Privacy & Local Execution Announcement Box
+  uiOutput("privacy_panel"),
 
   uiOutput("step1_panel"),
   uiOutput("col_selector_panel"),
@@ -434,14 +447,22 @@ server <- function(input, output, session) {
     p(class="app-subtitle", t()$app_subtitle, " ", tags$strong("Dualex DX4.5"), "")
   })
 
+  # Render del box privacy e sicurezza in cima
+  output$privacy_panel <- renderUI({
+    div(class="privacy-card", style="background-color: #F0FDF4; border-color: #DCFCE7;",
+      h5(style="color: #14532D; font-weight: 700; margin-bottom: 0.4rem; font-size: 1rem;", t()$privacy_title),
+      p(style="color: #166534; font-size: 0.88rem; margin-bottom: 0; line-height: 1.4;", t()$privacy_text)
+    )
+  })
+
   # Creazione dinamica dei crediti bilingue con i link forniti
   output$app_credits <- renderUI({
     if (lang() == "it") {
       tagList(
         "Applicazione creata da ", 
-        tags$a(href="https://www.mauromaver.eu", target="_blank", style="color: #2D6A4F; font-weight: 700; text-decoration: underline;", "Mauro Maver"), 
+        tags$a(href="[https://www.mauromaver.eu](https://www.mauromaver.eu)", target="_blank", style="color: #2D6A4F; font-weight: 700; text-decoration: underline;", "Mauro Maver"), 
         " || Se riscontri problemi o bug, visita il mio profilo ",
-        tags$a(href="https://github.com/Stramon1um", target="_blank", style="color: #2D6A4F; font-weight: 600; text-decoration: underline;", "GitHub"),
+        tags$a(href="[https://github.com/Stramon1um](https://github.com/Stramon1um)", target="_blank", style="color: #2D6A4F; font-weight: 600; text-decoration: underline;", "GitHub"),
         " oppure inviami una ",
         tags$a(href="mailto:mauro.maver@univr.it", style="color: #2D6A4F; font-weight: 600; text-decoration: underline;", "mail"),
         " 😊"
@@ -449,9 +470,9 @@ server <- function(input, output, session) {
     } else {
       tagList(
         "Application developed by ", 
-        tags$a(href="https://www.mauromaver.eu", target="_blank", style="color: #2D6A4F; font-weight: 700; text-decoration: underline;", "Mauro Maver"), 
+        tags$a(href="[https://www.mauromaver.eu](https://www.mauromaver.eu)", target="_blank", style="color: #2D6A4F; font-weight: 700; text-decoration: underline;", "Mauro Maver"), 
         " || If you encounter any bugs, please check my ",
-        tags$a(href="https://github.com/Stramon1um", target="_blank", style="color: #2D6A4F; font-weight: 600; text-decoration: underline;", "GitHub"),
+        tags$a(href="[https://github.com/Stramon1um](https://github.com/Stramon1um)", target="_blank", style="color: #2D6A4F; font-weight: 600; text-decoration: underline;", "GitHub"),
         " profile or send me an ",
         tags$a(href="mailto:mauro.maver@univr.it", style="color: #2D6A4F; font-weight: 600; text-decoration: underline;", "email"),
         " 😊"
@@ -712,4 +733,5 @@ server <- function(input, output, session) {
 }
 
 shinyApp(ui, server)
+
 ```

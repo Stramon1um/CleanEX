@@ -1,13 +1,9 @@
 project:
   type: website
   output-dir: docs
-  
-filters:
-  - shinylive
 
 website:
   title: "CleanEX"
-  #description: "Descrizione..."
   search: false
   page-navigation: true
   back-to-top-navigation: true
@@ -17,8 +13,8 @@ website:
       - icon: envelope-fill
         href: mailto:mauro.maver@univr.it
     background: primary
-  page-footer: 
-    right: "Creato da Mauro Maver" 
+  page-footer:
+    right: "Creato da Mauro Maver"
     background: primary
     foreground: primary
 
@@ -26,13 +22,13 @@ format:
   html:
     smooth-scroll: true
     theme: Minty
-    css: styles.css
-    toc: true
-    toc-depth: 3
+    toc: false
     embed-resources: false
 
-editor: source
+filters:
+  - quarto-ext/shinylive
 
 execute:
-  freeze: auto # re-render only when source changes 
+  freeze: auto
 
+editor: source
