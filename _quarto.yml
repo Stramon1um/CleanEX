@@ -5,18 +5,14 @@ project:
 website:
   title: "CleanEX"
   search: false
-  page-navigation: true
-  back-to-top-navigation: true
+  page-navigation: false
+  back-to-top-navigation: false
   bread-crumbs: false
   navbar:
     right:
       - icon: envelope-fill
         href: mailto:mauro.maver@univr.it
     background: primary
-  page-footer:
-    right: "Creato da Mauro Maver"
-    background: primary
-    foreground: primary
 
 format:
   html:
@@ -26,7 +22,7 @@ format:
     embed-resources: false
 
 filters:
-  - quarto-ext/shinylive
+  - shinylive
 
 execute:
   freeze: auto
