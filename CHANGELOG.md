@@ -4,6 +4,10 @@ All notable changes to CleanEX are documented in this file.
 
 ## [1.1] - 2026-10-29
 
+### Added
+
+- Spanish (ES) and French (FR) interface, alongside English and Italian, as in CleanRhizo and CleanSpeX. The header wraps on narrow screens so the language switcher stays visible.
+
 ### Fixed
 
 - **CSV export**: text columns are now quoted, so treatment names containing commas or quotes (e.g. `Ctrl, low N`) no longer shift columns in the exported files. Numeric columns remain unquoted.
