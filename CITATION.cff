@@ -1,0 +1,29 @@
+cff-version: 1.2.0
+message: "If you use CleanEX in your research, please cite it as below."
+type: software
+title: "CleanEX: a browser-based tool for Dualex leaf optical data cleaning and exploration"
+abstract: "CleanEX is a free, browser-based application for cleaning, organizing and exploring leaf optical data (chlorophyll, flavonoids, anthocyanins and nitrogen balance index) exported from the Dualex sensor (Metos Global). It runs entirely in the browser via WebR and shinylive: it parses the raw Dualex export, translates column names, assigns treatments to measurement groups, produces tidy datasets in wide or long format with exploratory bar charts, and merges data from several measurement sessions."
+authors:
+  - family-names: Maver
+    given-names: Mauro
+    affiliation: University of Verona
+    orcid: "https://orcid.org/0000-0002-8162-3618"
+version: 1.1.0
+date-released: 2026-10-29
+doi: 10.5281/zenodo.21894245
+license: MIT
+repository-code: "https://github.com/Stramon1um/CleanEX"
+url: "https://www.mauromaver.eu/CleanEX/"
+keywords:
+  - leaf optical sensor
+  - chlorophyll
+  - flavonoids
+  - anthocyanins
+  - nitrogen balance index
+  - Dualex
+  - plant phenotyping
+  - data cleaning
+  - WebR
+  - shinylive
+  - R
+  - open science

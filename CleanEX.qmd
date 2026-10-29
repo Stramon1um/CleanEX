@@ -105,6 +105,12 @@ COL_RENAME <- c(
 
 PARAM_COLS <- c("Chl", "Flav", "Anth", "NBI")
 
+# Colonne descrittive: mai trattate come parametri (né nel formato long né nel grafico)
+META_COLS <- c("date", "time", "temp", "group", "treatment", "measure", "face",
+               "longitude", "latitude", "altitude", "qual_sat", "etal")
+
+APP_VERSION <- "v.1.1"
+
 # ── Dizionario UI bilingue ────────────────────────────────────────────────────
 TR <- list(
   it = list(
@@ -119,13 +125,14 @@ TR <- list(
     status_final    = "✓ File finale pronto",
     status_error    = "✗ Errore",
     step1           = "1 — Carica il file",
-    file_placeholder= "Seleziona un file CSV dal Dualex…",
+    file_placeholder= "Seleziona il file esportato dal Dualex (.txt o .csv)…",
     file_btn        = "Sfoglia",
     file_info       = function(nr, nc) paste0(nr, " misure · ", nc, " colonne rilevate"),
     step2           = "2 — Seleziona le colonne da mantenere",
     sel_all         = "Seleziona tutte",
     desel_all       = "Deseleziona tutte",
     col_meta        = "colonne selezionate",
+    of_word         = "di",
     step3           = "3 — Genera il file pulito",
     btn_clean       = "Pulisci",
     btn_dl_clean    = "Scarica CSV pulito",
@@ -160,13 +167,14 @@ TR <- list(
     jitter_label    = "Mostra punti individuali (jitter)",
     jitter_sub      = "Visualizza ogni singola misura come puntino, utile per individuare outlier o valutare la distribuzione",
     step7           = "7 — Unisci con un file precedente (opzionale)",
-    merge_hint      = "Carica un CSV precedentemente esportato da CleanEX nello stesso formato (wide o long). Le colonne devono corrispondere esattamente. I dati verranno impilati in ordine cronologico.",
+    merge_hint      = "Carica un CSV precedentemente esportato da CleanEX nello stesso formato (wide o long). Le colonne devono corrispondere esattamente. I dati verranno ordinati cronologicamente per data e ora.",
     merge_file_ph   = "Seleziona un CSV CleanEX precedente…",
     merge_file_btn  = "Sfoglia",
     btn_merge       = "Unisci i file",
     btn_dl_merge    = "Scarica CSV combinato",
     merge_ok        = function(n1, n2) paste0("✓ Unione completata: ", n1, " + ", n2, " righe = ", n1+n2, " righe totali"),
     merge_err_cols  = "Errore: le colonne del file caricato non corrispondono al file corrente. Verifica che entrambi i file siano nello stesso formato (wide o long) e abbiano gli stessi parametri.",
+    merge_err_read  = "Errore: impossibile leggere il file. Verifica che sia un CSV esportato da CleanEX (separatore virgola, prima riga con i nomi delle colonne).",
     merge_preview_curr = "Anteprima file corrente (prime 5 righe):",
     merge_preview_prev = "Anteprima file precedente (prime 5 righe):",
     credits         = list(
@@ -188,13 +196,14 @@ TR <- list(
     status_final    = "✓ Final file ready",
     status_error    = "✗ Error",
     step1           = "1 — Load file",
-    file_placeholder= "Select a CSV file from the Dualex…",
+    file_placeholder= "Select the file exported from the Dualex (.txt or .csv)…",
     file_btn        = "Browse",
     file_info       = function(nr, nc) paste0(nr, " measurements · ", nc, " columns detected"),
     step2           = "2 — Select columns to keep",
     sel_all         = "Select all",
     desel_all       = "Deselect all",
     col_meta        = "columns selected",
+    of_word         = "of",
     step3           = "3 — Generate cleaned file",
     btn_clean       = "Clean",
     btn_dl_clean    = "Download cleaned CSV",
@@ -229,13 +238,14 @@ TR <- list(
     jitter_label    = "Show individual data points (jitter)",
     jitter_sub      = "Overlay each measurement as a dot, useful to spot outliers or assess distribution",
     step7           = "7 — Merge with a previous file (optional)",
-    merge_hint      = "Load a CSV previously exported from CleanEX in the same format (wide or long). Columns must match exactly. Data will be stacked in chronological order.",
+    merge_hint      = "Load a CSV previously exported from CleanEX in the same format (wide or long). Columns must match exactly. Data will be sorted chronologically by date and time.",
     merge_file_ph   = "Select a previous CleanEX CSV…",
     merge_file_btn  = "Browse",
     btn_merge       = "Merge files",
     btn_dl_merge    = "Download combined CSV",
     merge_ok        = function(n1, n2) paste0("✓ Merge complete: ", n1, " + ", n2, " rows = ", n1+n2, " total rows"),
     merge_err_cols  = "Error: columns in the uploaded file do not match the current file. Make sure both files are in the same format (wide or long) and have the same parameters.",
+    merge_err_read  = "Error: the file could not be read. Make sure it is a CSV exported from CleanEX (comma separator, first row with column names).",
     merge_preview_curr = "Current file preview (first 5 rows):",
     merge_preview_prev = "Previous file preview (first 5 rows):",
     credits         = list(
@@ -283,11 +293,20 @@ apply_rename <- function(df) {
   df
 }
 
+# ── Colonne parametro: numeriche e non descrittive (esclude qual_sat, etal, GPS…) ──
+get_param_cols <- function(df) {
+  cand <- setdiff(colnames(df), META_COLS)
+  cand[vapply(cand, function(c) {
+    v <- df[[c]]
+    v <- v[!is.na(v) & trimws(as.character(v)) != ""]
+    length(v) > 0 && !anyNA(suppressWarnings(as.numeric(v)))
+  }, logical(1))]
+}
+
 pivot_long <- function(df) {
-  id_cols    <- c("date", "time", "temp", "group", "treatment", "measure", "face")
-  id_present <- id_cols[id_cols %in% colnames(df)]
-  param_cols <- setdiff(colnames(df), id_present)
+  param_cols <- get_param_cols(df)
   if (!length(param_cols)) return(df)
+  id_present <- setdiff(colnames(df), param_cols)
   id_data   <- df[, id_present, drop = FALSE]
   long_rows <- do.call(rbind, lapply(param_cols, function(p) {
     tmp <- id_data; tmp$parameter <- p; tmp$value <- df[[p]]; tmp
@@ -446,22 +465,66 @@ jsonlite_like_array <- function(x) {
 
 # ── Parametri numerici disponibili per il grafico (wide o long) ──────────────
 get_available_chart_params <- function(df) {
-  excl <- c("date", "time", "temp", "group", "treatment", "measure", "face")
   if ("parameter" %in% colnames(df) && "value" %in% colnames(df)) {
     sort(unique(df$parameter))
   } else {
-    cand <- setdiff(colnames(df), excl)
-    cand[vapply(cand, function(c) {
-      !all(is.na(suppressWarnings(as.numeric(df[[c]]))))
-    }, logical(1))]
+    get_param_cols(df)
   }
 }
 
+# ── CSV con virgolette sulle sole colonne di testo: nomi di trattamento con ──
+# ── virgole restano integri, i numeri restano senza virgolette ─────────────────
 df_to_csv_string <- function(df, sep = ",") {
-  con <- textConnection("out", "w")
-  write.table(df, con, sep = sep, row.names = FALSE, quote = FALSE, na = "")
+  is_num_like <- function(x) {
+    v <- trimws(as.character(x)); v <- v[!is.na(v) & v != ""]
+    !anyNA(suppressWarnings(as.numeric(v)))
+  }
+  q   <- which(!vapply(df, is_num_like, logical(1)))
+  con <- textConnection("out", "w", local = TRUE)
+  write.table(df, con, sep = sep, row.names = FALSE, quote = q, na = "",
+              qmethod = "double")
   close(con)
   paste(out, collapse = "\n")
+}
+
+# ── Lettura di un CSV CleanEX come testo (nessuna conversione dei numeri) ─────
+read_cleanex_csv <- function(path) {
+  df <- read.csv(path, check.names = FALSE, stringsAsFactors = FALSE,
+                 colClasses = "character", na.strings = character(0),
+                 encoding = "UTF-8")
+  if (!ncol(df)) stop("empty file")
+  b <- charToRaw(colnames(df)[1])   # BOM UTF-8 eventualmente lasciato da Excel
+  if (length(b) >= 3 && identical(b[1:3], as.raw(c(0xEF, 0xBB, 0xBF))))
+    colnames(df)[1] <- rawToChar(b[-(1:3)])
+  df
+}
+
+# ── Data Dualex (gg/mm/aaaa) o ISO → Date; NA se non interpretabile ──────────
+parse_dx_date <- function(x) {
+  x <- trimws(as.character(x))
+  best <- rep(as.Date(NA), length(x))
+  for (fmt in c("%d/%m/%Y", "%Y-%m-%d", "%d.%m.%Y", "%d-%m-%Y")) {
+    d <- as.Date(x, format = fmt)
+    if (sum(!is.na(d)) > sum(!is.na(best))) best <- d
+  }
+  best
+}
+
+# ── Ordinamento cronologico (data, poi ora); ordine invariato se le date non si leggono ──
+sort_chrono <- function(df) {
+  if (!"date" %in% colnames(df) || !nrow(df)) return(df)
+  d <- parse_dx_date(df$date)
+  if (anyNA(d)) return(df)
+  tm <- if ("time" %in% colnames(df)) {
+    p <- strsplit(trimws(as.character(df$time)), ":", fixed = TRUE)
+    vapply(p, function(z) {
+      z <- suppressWarnings(as.numeric(z)); z <- c(z, 0, 0, 0)[1:3]
+      if (anyNA(z)) NA_real_ else sum(z * c(3600, 60, 1))
+    }, numeric(1))
+  } else rep(0, nrow(df))
+  out <- df[order(d, tm, seq_len(nrow(df)), na.last = TRUE), , drop = FALSE]
+  rownames(out) <- NULL
+  out
 }
 
 # ── UI ───────────────────────────────────────────────────────────────────────
@@ -827,7 +890,8 @@ server <- function(input, output, session) {
   rv <- reactiveValues(
     df_raw = NULL, df_clean = NULL, df_trt = NULL, df_final = NULL,
     groups = NULL, error = NULL, base_name = NULL, chart_png_b64 = NULL,
-    df_merged = NULL, merge_error = NULL, df_prev_preview = NULL
+    df_merged = NULL, merge_error = NULL, df_prev_preview = NULL,
+    sel_cols = NULL, trt_vals = list()
   )
 
   lang <- reactive({ if (is.null(input$ui_lang)) "en" else input$ui_lang })
@@ -864,7 +928,7 @@ server <- function(input, output, session) {
       tags$a(href = "https://www.mauromaver.eu", target = "_blank",
              style = "color:#2D6A4F; font-weight:700; text-decoration:underline;", "Mauro Maver"),
       " · ",
-      tags$span(style = "color:#9CA3AF; font-size:.88rem;", "v.1.0"),
+      tags$span(style = "color:#9CA3AF; font-size:.88rem;", APP_VERSION),
       cr$bug,
       tags$a(href = "https://github.com/Stramon1um", target = "_blank",
              style = "color:#2D6A4F; font-weight:600; text-decoration:underline;", "GitHub"),
@@ -880,7 +944,8 @@ server <- function(input, output, session) {
     tx <- t()
     div(class = "dx-card",
       p(class = "section-label", tx$step1),
-      fileInput("file_in", label = NULL, accept = c(".csv", "text/csv"),
+      fileInput("file_in", label = NULL,
+                accept = c(".txt", ".csv", "text/plain", "text/csv"),
                 placeholder = tx$file_placeholder, buttonLabel = tx$file_btn),
       uiOutput("file_info_chip")
     )
@@ -888,25 +953,45 @@ server <- function(input, output, session) {
 
   observeEvent(input$file_in, {
     rv$df_raw <- rv$df_clean <- rv$df_trt <- rv$df_final <- rv$groups <- rv$error <- rv$chart_png_b64 <- NULL
+    rv$df_merged <- rv$merge_error <- rv$df_prev_preview <- rv$sel_cols <- NULL
+    rv$trt_vals <- list()
     tryCatch({
       rv$df_raw    <- parse_dx_raw(input$file_in$datapath)
-      rv$base_name <- sub("\\.csv$", "", input$file_in$name, ignore.case = TRUE)
+      rv$base_name <- sub("\\.(csv|txt)$", "", input$file_in$name, ignore.case = TRUE)
     }, error = function(e) rv$error <- conditionMessage(e))
   })
 
   output$file_info_chip <- renderUI({
     req(rv$df_raw)
-    div(class = "file-chip", t()$file_info(nrow(rv$df_raw), ncol(rv$df_raw)))
+    div(class = "file-chip",
+        paste0(input$file_in$name, " · ", t()$file_info(nrow(rv$df_raw), ncol(rv$df_raw))))
   })
+
+  # ── Stato dell'interfaccia conservato al cambio lingua ────────────────────
+  observeEvent(input$selected_cols, { rv$sel_cols <- input$selected_cols },
+               ignoreNULL = FALSE, ignoreInit = TRUE)
+  observeEvent(input$trt_edit, {
+    vals <- rv$trt_vals
+    vals[[as.character(input$trt_edit$g)]] <- input$trt_edit$v
+    rv$trt_vals <- vals
+  })
+  current_chart_params <- function(avail) {
+    sel <- intersect(input$chart_params, avail)
+    if (length(sel)) sel else avail
+  }
 
   # ── Step 2: Pill colonne ──────────────────────────────────────────────────
   output$col_selector_panel <- renderUI({
     req(rv$df_raw)
     tx       <- t()
     all_cols <- colnames(rv$df_raw)
-    n_active <- sum(!tolower(all_cols) %in% tolower(DEFAULT_DROP))
-    pills <- lapply(all_cols, function(col) {
-      is_active <- !tolower(col) %in% tolower(DEFAULT_DROP)
+    sel      <- isolate(rv$sel_cols)
+    active_v <- if (is.null(sel)) !tolower(all_cols) %in% tolower(DEFAULT_DROP)
+                else all_cols %in% unlist(sel)
+    n_active <- sum(active_v)
+    pills <- lapply(seq_along(all_cols), function(i) {
+      col       <- all_cols[i]
+      is_active <- active_v[i]
       tags$span(
         class      = paste("col-toggle", if (is_active) "active" else "excluded"),
         `data-col` = col,
@@ -922,7 +1007,7 @@ server <- function(input, output, session) {
       ),
       div(class = "col-grid", pills),
       p(class = "toggle-meta", id = "col-meta",
-        paste(n_active, "di", length(all_cols), tx$col_meta))
+        paste(n_active, tx$of_word, length(all_cols), tx$col_meta))
     )
   })
 
@@ -931,7 +1016,7 @@ server <- function(input, output, session) {
     active <- if (!is.null(input$active_col_count)) input$active_col_count
               else sum(!tolower(colnames(rv$df_raw)) %in% tolower(DEFAULT_DROP))
     session$sendCustomMessage("updateColMeta",
-      list(text = paste(active, "of", ncol(rv$df_raw), t()$col_meta)))
+      list(text = paste(active, t()$of_word, ncol(rv$df_raw), t()$col_meta)))
   })
 
   # ── Step 3: Pulizia + rinomina ────────────────────────────────────────────
@@ -1021,9 +1106,10 @@ server <- function(input, output, session) {
     inputs <- lapply(rv$groups, function(g) {
       div(class = "trt-row",
         div(class = "trt-badge", g),
-        tags$input(type = "text", id = paste0("trt_", g), class = "trt-input",
+        tags$input(type = "text", class = "trt-input", `data-g` = g,
+          value = { v <- isolate(rv$trt_vals)[[as.character(g)]]; if (is.null(v)) "" else v },
           placeholder = paste0(tx$trt_placeholder, g),
-          oninput = paste0("Shiny.setInputValue('trt_", g, "', this.value, {priority:'event'})"))
+          oninput = "Shiny.setInputValue('trt_edit', {g: this.dataset.g, v: this.value}, {priority:'event'})")
       )
     })
     div(class = "dx-card",
@@ -1049,7 +1135,7 @@ server <- function(input, output, session) {
       grp_col <- grp_col[1]
       trt_map <- setNames(
         vapply(rv$groups, function(g) {
-          val <- input[[paste0("trt_", g)]]
+          val <- rv$trt_vals[[as.character(g)]]
           if (is.null(val) || trimws(val) == "") as.character(g) else trimws(val)
         }, character(1)),
         rv$groups
@@ -1069,7 +1155,7 @@ server <- function(input, output, session) {
   observeEvent(input$dl_trt_btn, {
     req(rv$df_trt)
     session$sendCustomMessage("downloadCSV", list(
-      filename = paste0(rv$base_name, "_clean.csv"),
+      filename = paste0(rv$base_name, "_treatments.csv"),
       content  = df_to_csv_string(rv$df_trt)
     ))
   })
@@ -1089,11 +1175,13 @@ server <- function(input, output, session) {
   output$pivot_panel <- renderUI({
     req(rv$df_trt)
     tx           <- t()
-    params_found <- PARAM_COLS[PARAM_COLS %in% colnames(rv$df_trt)]
+    params_found <- get_param_cols(rv$df_trt)
     div(class = "dx-card",
       p(class = "section-label", tx$step5),
       if (length(params_found))
-        div(id = "pivot-toggle", class = "pivot-toggle", onclick = "togglePivot();",
+        div(id = "pivot-toggle",
+            class = paste("pivot-toggle", if (isTRUE(isolate(input$pivot_long))) "on"),
+            onclick = "togglePivot();",
           div(class = "pivot-switch"),
           div(
             div(class = "pivot-label", tx$pivot_label),
@@ -1124,7 +1212,7 @@ server <- function(input, output, session) {
   observeEvent(input$dl_final_btn, {
     req(rv$df_final)
     session$sendCustomMessage("downloadCSV", list(
-      filename = paste0(rv$base_name, "_clean.csv"),
+      filename = paste0(rv$base_name, "_final.csv"),
       content  = df_to_csv_string(rv$df_final)
     ))
   })
@@ -1138,10 +1226,10 @@ server <- function(input, output, session) {
         div(class="stat-item", span(class="stat-val", nrow(rv$df_final)), span(class="stat-lbl", tx$stat_rows)),
         div(class="stat-item", span(class="stat-val", ncol(rv$df_final)), span(class="stat-lbl", tx$stat_cols)),
         div(class="stat-item",
-          span(class="stat-val", if (isTRUE(input$pivot_long)) "long" else "wide"),
+          span(class="stat-val", if ("parameter" %in% colnames(rv$df_final)) "long" else "wide"),
           span(class="stat-lbl", tx$stat_format)),
         div(class="stat-item",
-          span(class="stat-val", paste0(rv$base_name, "_clean.csv")),
+          span(class="stat-val", paste0(rv$base_name, "_final.csv")),
           span(class="stat-lbl", tx$stat_file))
       ),
       p(class = "section-label", tx$final_preview),
@@ -1158,7 +1246,6 @@ server <- function(input, output, session) {
 
     if (!"treatment" %in% colnames(rv$df_final)) return(NULL)
 
-    excl <- c("date", "time", "temp", "group", "treatment", "measure", "face")
     avail_params <- get_available_chart_params(rv$df_final)
 
     if (!length(avail_params)) {
@@ -1166,8 +1253,11 @@ server <- function(input, output, session) {
                   p(style = "font-size:.85rem; color:#9CA3AF;", tx$chart_no_params)))
     }
 
+    sel_now <- isolate(current_chart_params(avail_params))
     pills <- lapply(avail_params, function(p) {
-      tags$span(class = "chart-param-toggle active", `data-param` = p,
+      tags$span(class = paste("chart-param-toggle",
+                              if (p %in% sel_now) "active" else "excluded"),
+                `data-param` = p,
                 onclick = "toggleChartParam(this);", p)
     })
 
@@ -1176,7 +1266,9 @@ server <- function(input, output, session) {
       p(class = "chart-hint", tx$chart_hint),
       p(style = "font-size:.82rem; color:#6B7280; margin-bottom:.5rem; font-weight:600;", tx$chart_param_lbl),
       div(class = "chart-param-grid", pills),
-      div(id = "jitter-toggle", class = "pivot-toggle", onclick = "toggleJitter();",
+      div(id = "jitter-toggle",
+          class = paste("pivot-toggle", if (isTRUE(isolate(input$show_jitter))) "on"),
+          onclick = "toggleJitter();",
         div(class = "pivot-switch"),
         div(
           div(class = "pivot-label", tx$jitter_label),
@@ -1195,10 +1287,7 @@ server <- function(input, output, session) {
     req(rv$df_final)
     rv$chart_png_b64 <- NULL
 
-    sel_params <- input$chart_params
-    if (is.null(sel_params) || !length(sel_params)) {
-      sel_params <- get_available_chart_params(rv$df_final)
-    }
+    sel_params <- current_chart_params(get_available_chart_params(rv$df_final))
     if (!length(sel_params)) return(NULL)
 
     is_long <- "parameter" %in% colnames(rv$df_final) && "value" %in% colnames(rv$df_final)
@@ -1260,7 +1349,7 @@ server <- function(input, output, session) {
         tableOutput("merge_curr_tbl")),
       hr(class = "section-divider"),
       # ── Caricamento file precedente ───────────────────────────────────────
-      fileInput("merge_file_in", label = NULL, accept = c(".csv", "text/csv"),
+      fileInput("merge_file_in", label = NULL, accept = c(".csv", "text/csv", "text/plain"),
                 placeholder = tx$merge_file_ph, buttonLabel = tx$merge_file_btn),
       uiOutput("merge_prev_preview_ui"),
       # ── Pulsanti ─────────────────────────────────────────────────────────
@@ -1282,8 +1371,7 @@ server <- function(input, output, session) {
   observeEvent(input$merge_file_in, {
     rv$df_prev_preview <- rv$df_merged <- rv$merge_error <- NULL
     tryCatch({
-      rv$df_prev_preview <- read.csv(input$merge_file_in$datapath,
-                                      check.names = FALSE, stringsAsFactors = FALSE)
+      rv$df_prev_preview <- read_cleanex_csv(input$merge_file_in$datapath)
     }, error = function(e) rv$merge_error <- t()$merge_err_read)
   })
 
@@ -1315,7 +1403,9 @@ server <- function(input, output, session) {
         return()
       }
       df_prev <- df_prev[, cols_curr, drop = FALSE]
-      rv$df_merged <- rbind(df_prev, rv$df_final)
+      df_curr <- rv$df_final
+      df_curr[] <- lapply(df_curr, function(x) ifelse(is.na(x), "", as.character(x)))
+      rv$df_merged <- sort_chrono(rbind(df_prev, df_curr))
     }, error = function(e) {
       rv$merge_error <- t()$merge_err_read
     })
