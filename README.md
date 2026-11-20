@@ -38,7 +38,7 @@ The file saved by the Dualex, either as `.txt` or `.csv`:
 - four metadata lines, then the column header on line 5 (starting with `#`), then the data;
 - a `#Groupe` comment block before each measurement group.
 
-Expected columns: `jj/mm/aaaa`, `hh:mm:ss`, `longitude`, `latitude`, `altitude`, `temp`, `groupe`, `mesure`, `face`, `Chl`, `Flav`, `Anth`, `NBI`, `qual_sat`, `etal`. Values are kept exactly as in the original file (decimal point expected).
+Expected columns: `jj/mm/aaaa`, `hh:mm:ss`, `longitude`, `latitude`, `altitude`, `temp`, `groupe`, `mesure`, `face`, `Chl`, `Flav`, `Anth`, `NBI`, `qual_sat`, `etal`. Values are kept exactly as in the original file (decimal point expected). Invalid measurements written by the instrument as `NaN` are kept in the exports and ignored in the chart.
 
 ## Output
 
@@ -81,6 +81,18 @@ quarto preview     # local preview (WebR needs a web server, not file://)
 ```
 
 The site in `docs/` is published with GitHub Pages.
+
+## Example file and tests
+
+[`tests/data/example_dualex.csv`](tests/data/example_dualex.csv) is a small synthetic file (invented measurements, 4 groups of 6 leaves) in the same format as a real Dualex export, including `#Groupe` summary blocks and a few `NaN` readings. You can load it in the app to try the workflow.
+
+The same file drives the regression tests, which extract the app code straight from `CleanEX.qmd` and run it, including the Shiny server logic, in plain R (packages `shiny` and `bslib`):
+
+```bash
+Rscript tests/run_tests.R
+```
+
+The script exits with an error status if any check fails.
 
 ## Related apps
 

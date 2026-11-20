@@ -2,6 +2,28 @@
 
 All notable changes to CleanEX are documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- `tests/data/example_dualex.csv`: a small synthetic Dualex file (with `#Groupe` blocks and `NaN` readings) to try the app.
+- `tests/run_tests.R`: regression tests that run the real app code (parsing, NaN handling, long/wide export, CSV round-trip, dates, merge, chart, Shiny server logic in the four languages). Run with `Rscript tests/run_tests.R`.
+
+### Fixed
+
+- **`NaN` values**: a single `NaN`/`nan` (or empty) value in Chl, Flav, Anth or NBI no longer excludes the whole column from the parameters. Previously the long-format export kept only the remaining parameters (e.g. only Chl), the chart offered only those, and the affected columns were written as quoted text in the CSV. Missing values are ignored in means and standard errors.
+- **Chart from long format**: the chart now reads the long table directly instead of rebuilding a wide table, which collapsed rows when the identifier columns (date, time, measure…) had been deselected and gave wrong means.
+- **Chart axis**: negative values and all-zero parameters are drawn correctly; no more zero-length-arrow warnings; the PNG device is always closed, even if drawing fails.
+- **Treatment order** in the chart is now natural (3, 4, 10, 11 instead of 10, 11, 3, 4).
+- **Step 2**: "Deselect all" followed by Clean now shows an error instead of silently using the default columns.
+- **Missing group column**: if `groupe` is deselected, a warning explains why treatments cannot be assigned.
+- **Rename chips** in the summary list only the columns that were kept.
+- **Empty group value** no longer yields `treatment = NA`.
+- **Input file**: measurement rows are recognised by their date, so the `#Groupe` summary block can never leak into the data whatever its length or language; UTF-8/UTF-16 BOMs and Latin-1 bytes are handled; files that are not Dualex exports, too short or without measurements give a clear (translated) error message.
+- **Decimal comma**: a warning is shown when values use a decimal comma (CleanEX expects a decimal point).
+- **Merge**: a warning is shown when rows of the current file are already present in the previous file (e.g. the same file loaded twice).
+- **Dates**: two-digit years (e.g. a CSV re-saved by Excel) are read correctly, and rows with an unreadable date go last instead of disabling the chronological sort.
+
 ## [1.1] - 2026-10-29
 
 ### Added

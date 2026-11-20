@@ -111,6 +111,57 @@ META_COLS <- c("date", "time", "temp", "group", "treatment", "measure", "face",
 
 APP_VERSION <- "v.1.1"
 
+# ── Valori mancanti e numeri ──────────────────────────────────────────────────
+# Il Dualex scrive "NaN"/"nan" quando una misura non è valida: un singolo valore
+# di questo tipo non deve far scartare l'intera colonna dai parametri.
+MISSING_TOKENS <- c("", "nan", "na", "n/a", "null", "-", "--", "---", "inf", "-inf")
+NUM_RE         <- "^[+-]?([0-9]+\\.?[0-9]*|\\.[0-9]+)([eE][+-]?[0-9]+)?$"
+DATE_LIKE_RE   <- "^[0-9]{1,4}[/.-][0-9]{1,2}[/.-][0-9]{1,4}$"
+
+is_missing_val <- function(x) {
+  x <- trimws(as.character(x))
+  is.na(x) | tolower(x) %in% MISSING_TOKENS
+}
+
+# TRUE se tutti i valori non mancanti sono numeri con punto decimale
+is_numeric_col <- function(x, require_value = FALSE) {
+  v <- trimws(as.character(x))
+  v <- v[!is_missing_val(v)]
+  if (!length(v)) return(!require_value)
+  all(grepl(NUM_RE, v))
+}
+
+# Conversione numerica sicura: i valori mancanti o non numerici diventano NA
+to_num <- function(x) {
+  v   <- trimws(as.character(x))
+  out <- rep(NA_real_, length(v))
+  ok  <- !is_missing_val(v) & grepl(NUM_RE, v)
+  out[ok] <- as.numeric(v[ok])
+  out
+}
+
+# Ordine "naturale" (T2 prima di T10; 3 prima di 10), indipendente dalla lingua del sistema
+natural_sort <- function(x) {
+  x <- unique(as.character(x)); x <- x[!is.na(x)]
+  key <- vapply(x, function(s) {
+    parts <- regmatches(s, gregexpr("[0-9]+|[^0-9]+", s))[[1]]
+    paste(ifelse(grepl("^[0-9]+$", parts),
+                 sprintf("%015.0f", suppressWarnings(as.numeric(parts))),
+                 tolower(parts)), collapse = "|")
+  }, character(1))
+  x[order(key, x, method = "radix")]
+}
+
+# Testo dell'errore: se è una chiave del dizionario viene tradotta
+err_text <- function(tx, msg) {
+  v <- tx[[msg]]
+  if (is.character(v) && length(v) == 1) v else msg
+}
+
+warn_box <- function(...) {
+  div(style = "margin-top:.8rem; padding:.7rem 1rem; background:#FEF3C7; border:1px solid #FCD34D; border-radius:6px; font-size:.88rem; color:#92400E;", ...)
+}
+
 # ── Dizionario UI bilingue ────────────────────────────────────────────────────
 TR <- list(
   it = list(
@@ -177,6 +228,12 @@ TR <- list(
     merge_err_read  = "Errore: impossibile leggere il file. Verifica che sia un CSV esportato da CleanEX (separatore virgola, prima riga con i nomi delle colonne).",
     merge_preview_curr = "Anteprima file corrente (prime 5 righe):",
     merge_preview_prev = "Anteprima file precedente (prime 5 righe):",
+    err_not_dualex  = "Il file non sembra un'esportazione Dualex: l'intestazione delle colonne (riga 5) non è stata trovata.",
+    err_no_data     = "Il file non contiene righe di misura.",
+    err_no_cols     = "Nessuna colonna selezionata: seleziona almeno una colonna al passo 2.",
+    warn_no_group   = "La colonna dei gruppi (groupe) non è inclusa: non è possibile assegnare i trattamenti. Selezionala di nuovo al passo 2 e ripeti la pulizia.",
+    warn_decimal    = "Rilevata la virgola decimale nei valori: CleanEX si aspetta il punto decimale, quindi i parametri non verranno riconosciuti. Esporta di nuovo il file dal Dualex o sostituisci la virgola con il punto.",
+    merge_warn_dup  = function(n) paste0("Attenzione: ", n, " righe del file corrente sono già presenti nel file precedente e risultano duplicate. Verifica di non aver caricato due volte lo stesso file."),
     credits         = list(
       pre  = "Applicazione creata da ",
       bug  = " · Segnala problemi su ",
@@ -248,6 +305,12 @@ TR <- list(
     merge_err_read  = "Error: the file could not be read. Make sure it is a CSV exported from CleanEX (comma separator, first row with column names).",
     merge_preview_curr = "Current file preview (first 5 rows):",
     merge_preview_prev = "Previous file preview (first 5 rows):",
+    err_not_dualex  = "The file does not look like a Dualex export: the column header (line 5) was not found.",
+    err_no_data     = "The file contains no measurement rows.",
+    err_no_cols     = "No column selected: select at least one column in step 2.",
+    warn_no_group   = "The group column (groupe) is not included, so treatments cannot be assigned. Select it again in step 2 and repeat the cleaning.",
+    warn_decimal    = "Decimal comma detected in the values: CleanEX expects a decimal point, so the parameters will not be recognised. Export the file again from the Dualex or replace the comma with a point.",
+    merge_warn_dup  = function(n) paste0("Warning: ", n, " rows of the current file are already present in the previous file and appear duplicated. Make sure you did not load the same file twice."),
     credits         = list(
       pre  = "Application developed by ",
       bug  = " · Report issues on ",
@@ -319,6 +382,12 @@ TR <- list(
     merge_err_read  = "Error: no se puede leer el archivo. Compruebe que sea un CSV exportado desde CleanEX (separador coma, primera fila con los nombres de las columnas).",
     merge_preview_curr = "Vista previa del archivo actual (primeras 5 filas):",
     merge_preview_prev = "Vista previa del archivo anterior (primeras 5 filas):",
+    err_not_dualex  = "El archivo no parece una exportación del Dualex: no se encontró la cabecera de columnas (línea 5).",
+    err_no_data     = "El archivo no contiene filas de medición.",
+    err_no_cols     = "Ninguna columna seleccionada: seleccione al menos una columna en el paso 2.",
+    warn_no_group   = "La columna de grupos (groupe) no está incluida, por lo que no se pueden asignar tratamientos. Vuelva a seleccionarla en el paso 2 y repita la limpieza.",
+    warn_decimal    = "Se detectó la coma decimal en los valores: CleanEX espera el punto decimal, por lo que los parámetros no se reconocerán. Exporte de nuevo el archivo desde el Dualex o sustituya la coma por un punto.",
+    merge_warn_dup  = function(n) paste0("Atención: ", n, " filas del archivo actual ya están en el archivo anterior y aparecen duplicadas. Compruebe que no ha cargado dos veces el mismo archivo."),
     credits         = list(
       pre  = "Aplicación desarrollada por ",
       bug  = " · Informe de problemas en ",
@@ -390,6 +459,12 @@ TR <- list(
     merge_err_read  = "Erreur : impossible de lire le fichier. Vérifiez qu'il s'agit d'un CSV exporté depuis CleanEX (séparateur virgule, première ligne avec les noms des colonnes).",
     merge_preview_curr = "Aperçu du fichier actuel (5 premières lignes) :",
     merge_preview_prev = "Aperçu du fichier précédent (5 premières lignes) :",
+    err_not_dualex  = "Le fichier ne ressemble pas à un export Dualex : l'en-tête des colonnes (ligne 5) est introuvable.",
+    err_no_data     = "Le fichier ne contient aucune ligne de mesure.",
+    err_no_cols     = "Aucune colonne sélectionnée : sélectionnez au moins une colonne à l'étape 2.",
+    warn_no_group   = "La colonne des groupes (groupe) n'est pas incluse : les traitements ne peuvent pas être attribués. Sélectionnez-la de nouveau à l'étape 2 et refaites le nettoyage.",
+    warn_decimal    = "Virgule décimale détectée dans les valeurs : CleanEX attend un point décimal, les paramètres ne seront donc pas reconnus. Exportez de nouveau le fichier depuis le Dualex ou remplacez la virgule par un point.",
+    merge_warn_dup  = function(n) paste0("Attention : ", n, " lignes du fichier actuel figurent déjà dans le fichier précédent et apparaissent en double. Vérifiez que vous n'avez pas chargé deux fois le même fichier."),
     credits         = list(
       pre  = "Application développée par ",
       bug  = " · Signaler des problèmes sur ",
@@ -400,16 +475,11 @@ TR <- list(
 )
 
 # ── Parsing Dualex ────────────────────────────────────────────────────────────
-parse_dx_raw <- function(filepath) {
-  raw_bytes <- readBin(filepath, what = "raw", n = file.info(filepath)$size)
-  raw_bytes <- raw_bytes[raw_bytes != as.raw(0x00)]
-  raw_lines <- trimws(strsplit(rawToChar(raw_bytes), "\n")[[1]])
-
-  header_fields <- trimws(strsplit(sub("^#", "", raw_lines[5]), ";")[[1]])
-  data_lines    <- raw_lines[6:length(raw_lines)]
-  skip_next     <- 0L
-  keep_lines    <- character(0)
-
+# Logica storica (blocco #Groupe = riga + 3 righe successive): usata solo come
+# ripiego se nel file non si riconosce nessuna riga che inizia con una data.
+filter_dx_lines_legacy <- function(data_lines) {
+  skip_next  <- 0L
+  keep_lines <- character(0)
   for (line in data_lines) {
     if (line == "")                  { if (skip_next > 0L) skip_next <- skip_next - 1L; next }
     if (startsWith(line, "#Groupe")) { skip_next <- 3L; next }
@@ -417,6 +487,37 @@ parse_dx_raw <- function(filepath) {
     if (skip_next > 0L)              { skip_next <- skip_next - 1L; next }
     keep_lines <- c(keep_lines, line)
   }
+  keep_lines
+}
+
+parse_dx_raw <- function(filepath) {
+  raw_bytes <- readBin(filepath, what = "raw", n = file.info(filepath)$size)
+  raw_bytes <- raw_bytes[raw_bytes != as.raw(0x00)]
+  # BOM (UTF-8 / UTF-16) rimasti dopo la rimozione dei byte nulli
+  if (length(raw_bytes) >= 3 && identical(raw_bytes[1:3], as.raw(c(0xEF, 0xBB, 0xBF)))) {
+    raw_bytes <- raw_bytes[-(1:3)]
+  } else if (length(raw_bytes) >= 2 &&
+             (identical(raw_bytes[1:2], as.raw(c(0xFF, 0xFE))) ||
+              identical(raw_bytes[1:2], as.raw(c(0xFE, 0xFF))))) {
+    raw_bytes <- raw_bytes[-(1:2)]
+  }
+  txt <- rawToChar(raw_bytes)
+  if (!validUTF8(txt)) txt <- iconv(txt, "latin1", "UTF-8", sub = "")   # es. "è" in Latin-1
+  raw_lines <- trimws(strsplit(txt, "\r\n|\n|\r")[[1]])
+
+  if (length(raw_lines) < 5 || !grepl(";", raw_lines[5], fixed = TRUE))
+    stop("err_not_dualex", call. = FALSE)
+  header_fields <- trimws(strsplit(sub("^#", "", raw_lines[5]), ";")[[1]])
+  if (length(header_fields) < 3) stop("err_not_dualex", call. = FALSE)
+  data_lines <- if (length(raw_lines) >= 6) raw_lines[6:length(raw_lines)] else character(0)
+
+  # Riga di misura = non commento e primo campo che sembra una data. Così i blocchi
+  # riepilogativi "#Groupe…" (e la loro riga di statistiche) non entrano mai nei dati,
+  # qualunque sia la loro lunghezza o la lingua del firmware.
+  first_field <- sub(";.*$", "", data_lines)
+  keep_lines  <- data_lines[!startsWith(data_lines, "#") & grepl(DATE_LIKE_RE, first_field)]
+  if (!length(keep_lines)) keep_lines <- filter_dx_lines_legacy(data_lines)
+  if (!length(keep_lines)) stop("err_no_data", call. = FALSE)
 
   n_cols     <- length(header_fields)
   split_rows <- lapply(strsplit(keep_lines, ";"), function(x) {
@@ -436,13 +537,19 @@ apply_rename <- function(df) {
 }
 
 # ── Colonne parametro: numeriche e non descrittive (esclude qual_sat, etal, GPS…) ──
+# NaN/nan/vuoti sono valori mancanti: non escludono la colonna.
 get_param_cols <- function(df) {
-  cand <- setdiff(colnames(df), META_COLS)
-  cand[vapply(cand, function(c) {
-    v <- df[[c]]
-    v <- v[!is.na(v) & trimws(as.character(v)) != ""]
-    length(v) > 0 && !anyNA(suppressWarnings(as.numeric(v)))
-  }, logical(1))]
+  cand <- colnames(df)[!tolower(colnames(df)) %in% META_COLS]
+  cand[vapply(cand, function(c) is_numeric_col(df[[c]], require_value = TRUE), logical(1))]
+}
+
+# ── Virgola decimale nei valori dei parametri (il Dualex usa il punto) ────────
+has_decimal_comma <- function(df) {
+  cols <- colnames(df)[!tolower(colnames(df)) %in% META_COLS]
+  any(vapply(cols, function(c) {
+    v <- trimws(as.character(df[[c]])); v <- v[!is_missing_val(v)]
+    length(v) > 0 && mean(grepl("^[+-]?[0-9]+,[0-9]+$", v)) > 0.5
+  }, logical(1)))
 }
 
 pivot_long <- function(df) {
@@ -459,23 +566,35 @@ pivot_long <- function(df) {
 }
 
 # ── Calcolo media + SE per trattamento ────────────────────────────────────────
+# Valori numerici + trattamento di un parametro, da formato wide o long.
+# Lavorare direttamente sul long evita di ricostruire il wide (che farebbe
+# collassare le righe con colonne identificative identiche).
+param_values <- function(df, param, trt_col = "treatment") {
+  if (all(c("parameter", "value") %in% colnames(df)) && !(param %in% colnames(df))) {
+    s <- df[as.character(df$parameter) == param, , drop = FALSE]
+    data.frame(trt = as.character(s[[trt_col]]), val = to_num(s$value), stringsAsFactors = FALSE)
+  } else {
+    data.frame(trt = as.character(df[[trt_col]]), val = to_num(df[[param]]), stringsAsFactors = FALSE)
+  }
+}
+
 compute_mean_se <- function(df, param, trt_col = "treatment") {
-  vals <- suppressWarnings(as.numeric(df[[param]]))
-  trt  <- df[[trt_col]]
-  ok   <- !is.na(vals) & !is.na(trt)
-  vals <- vals[ok]; trt <- trt[ok]
+  pv   <- param_values(df, param, trt_col)
+  ok   <- is.finite(pv$val) & !is.na(pv$trt)
+  vals <- pv$val[ok]; trt <- pv$trt[ok]
   if (!length(vals)) return(NULL)
 
-  agg_mean <- tapply(vals, trt, mean, na.rm = TRUE)
-  agg_se   <- tapply(vals, trt, function(x) {
-    n <- sum(!is.na(x))
+  f        <- factor(trt, levels = natural_sort(trt))
+  agg_mean <- tapply(vals, f, mean)
+  agg_se   <- tapply(vals, f, function(x) {
+    n <- length(x)
     if (n < 2) return(0)
-    sd(x, na.rm = TRUE) / sqrt(n)
+    sd(x) / sqrt(n)
   })
   data.frame(
-    treatment = names(agg_mean),
+    treatment = levels(f),
     mean      = as.numeric(agg_mean),
-    se        = as.numeric(agg_se[names(agg_mean)]),
+    se        = as.numeric(agg_se),
     stringsAsFactors = FALSE
   )
 }
@@ -519,7 +638,7 @@ draw_bar_chart <- function(df, params, trt_col = "treatment", ylab = "Mean value
   panel_bg <- "#FFFFFF"
   plot_bg  <- "#FFFFFF"
 
-  all_treatments <- sort(unique(as.character(df[[trt_col]])))
+  all_treatments <- natural_sort(df[[trt_col]])
   trt_colors <- setNames(pal[((seq_along(all_treatments) - 1) %% length(pal)) + 1],
                           all_treatments)
 
@@ -543,30 +662,35 @@ draw_bar_chart <- function(df, params, trt_col = "treatment", ylab = "Mean value
     bar_cols <- trt_colors[agg$treatment]
     n_bars   <- nrow(agg)
 
-    raw_vals <- suppressWarnings(as.numeric(df[[p]]))
-    raw_trt  <- as.character(df[[trt_col]])
-    ok_pts   <- !is.na(raw_vals) & !is.na(raw_trt)
-    pts_vals <- raw_vals[ok_pts]
-    pts_trt  <- raw_trt[ok_pts]
+    pv       <- param_values(df, p, trt_col)
+    ok_pts   <- is.finite(pv$val) & !is.na(pv$trt)
+    pts_vals <- pv$val[ok_pts]
+    pts_trt  <- pv$trt[ok_pts]
 
-    ylim_max <- max(agg$mean + agg$se, na.rm = TRUE) * 1.18
+    # Intervallo verticale: include sempre lo 0, le barre di errore e (se attivi) i punti;
+    # funziona anche con valori negativi o tutti nulli.
+    hi <- max(agg$mean + agg$se, 0, na.rm = TRUE)
+    lo <- min(agg$mean - agg$se, 0, na.rm = TRUE)
     if (show_jitter && length(pts_vals)) {
-      ylim_max <- max(ylim_max, max(pts_vals, na.rm = TRUE) * 1.1)
+      hi <- max(hi, pts_vals); lo <- min(lo, pts_vals)
     }
+    ylim_max <- if (hi > 0) hi * 1.18 else 0
+    ylim_min <- if (lo < 0) lo * 1.18 else 0
+    if (ylim_max == ylim_min) ylim_max <- 1
 
     plot.new()
-    plot.window(xlim = c(0.2, n_bars * 1.2 + 0.2), ylim = c(0, ylim_max))
+    plot.window(xlim = c(0.2, n_bars * 1.2 + 0.2), ylim = c(ylim_min, ylim_max))
     rect(par("usr")[1], par("usr")[3], par("usr")[2], par("usr")[4],
          col = panel_bg, border = NA)
 
-    y_major <- pretty(c(0, ylim_max))
-    y_major <- y_major[y_major >= 0 & y_major <= ylim_max]
+    y_major <- pretty(c(ylim_min, ylim_max))
+    y_major <- y_major[y_major >= ylim_min & y_major <= ylim_max]
     y_minor <- (head(y_major, -1) + tail(y_major, -1)) / 2
     abline(h = y_minor, col = minor_gr, lwd = 0.7)
     abline(h = y_major, col = major_gr, lwd = 1)
 
     bp <- barplot(agg$mean, col = bar_cols, border = "#1A1A1A", lwd = 0.9,
-                  ylim = c(0, ylim_max), add = TRUE,
+                  ylim = c(ylim_min, ylim_max), add = TRUE,
                   ylab = "", main = "", names.arg = rep("", n_bars),
                   axes = FALSE)
 
@@ -577,10 +701,13 @@ draw_bar_chart <- function(df, params, trt_col = "treatment", ylab = "Mean value
              col = adjustcolor("#1A1A1A", alpha.f = 0.6), cex = 0.85, lwd = 0.6)
     }
 
-    arrows(x0 = bp, y0 = agg$mean, x1 = bp, y1 = agg$mean + agg$se,
-           angle = 90, length = 0.08, col = fg, lwd = 1.6)
-    arrows(x0 = bp, y0 = agg$mean, x1 = bp, y1 = pmax(agg$mean - agg$se, 0),
-           angle = 90, length = 0.08, col = fg, lwd = 1.6)
+    has_se <- which(agg$se > 0)   # SE nullo (n = 1): nessuna barra di errore
+    if (length(has_se)) {
+      arrows(x0 = bp[has_se], y0 = agg$mean[has_se], x1 = bp[has_se], y1 = agg$mean[has_se] + agg$se[has_se],
+             angle = 90, length = 0.08, col = fg, lwd = 1.6)
+      arrows(x0 = bp[has_se], y0 = agg$mean[has_se], x1 = bp[has_se], y1 = agg$mean[has_se] - agg$se[has_se],
+             angle = 90, length = 0.08, col = fg, lwd = 1.6)
+    }
 
     unit      <- extract_unit(p)
     ylab_full <- if (!is.null(unit)) paste0(ylab, " [", unit, "]") else ylab
@@ -617,11 +744,8 @@ get_available_chart_params <- function(df) {
 # ── CSV con virgolette sulle sole colonne di testo: nomi di trattamento con ──
 # ── virgole restano integri, i numeri restano senza virgolette ─────────────────
 df_to_csv_string <- function(df, sep = ",") {
-  is_num_like <- function(x) {
-    v <- trimws(as.character(x)); v <- v[!is.na(v) & v != ""]
-    !anyNA(suppressWarnings(as.numeric(v)))
-  }
-  q   <- which(!vapply(df, is_num_like, logical(1)))
+  # NaN/vuoti non rendono "testo" una colonna numerica (restano senza virgolette)
+  q   <- which(!vapply(df, is_numeric_col, logical(1)))
   con <- textConnection("out", "w", local = TRUE)
   write.table(df, con, sep = sep, row.names = FALSE, quote = q, na = "",
               qmethod = "double")
@@ -643,20 +767,32 @@ read_cleanex_csv <- function(path) {
 
 # ── Data Dualex (gg/mm/aaaa) o ISO → Date; NA se non interpretabile ──────────
 parse_dx_date <- function(x) {
-  x <- trimws(as.character(x))
-  best <- rep(as.Date(NA), length(x))
-  for (fmt in c("%d/%m/%Y", "%Y-%m-%d", "%d.%m.%Y", "%d-%m-%Y")) {
-    d <- as.Date(x, format = fmt)
-    if (sum(!is.na(d)) > sum(!is.na(best))) best <- d
+  x   <- trimws(as.character(x))
+  out <- rep(as.Date(NA), length(x))
+  # Ogni formato è applicato solo alle stringhe con la forma giusta, così un anno a
+  # due cifre (CSV risalvato da Excel) non viene letto come anno 0026.
+  cands <- list(
+    c("%d/%m/%Y", "^[0-9]{1,2}/[0-9]{1,2}/[0-9]{4}$"),
+    c("%Y-%m-%d", "^[0-9]{4}-[0-9]{1,2}-[0-9]{1,2}$"),
+    c("%d.%m.%Y", "^[0-9]{1,2}[.][0-9]{1,2}[.][0-9]{4}$"),
+    c("%d-%m-%Y", "^[0-9]{1,2}-[0-9]{1,2}-[0-9]{4}$"),
+    c("%d/%m/%y", "^[0-9]{1,2}/[0-9]{1,2}/[0-9]{2}$"),
+    c("%d.%m.%y", "^[0-9]{1,2}[.][0-9]{1,2}[.][0-9]{2}$"),
+    c("%d-%m-%y", "^[0-9]{1,2}-[0-9]{1,2}-[0-9]{2}$")
+  )
+  for (cd in cands) {
+    idx <- which(is.na(out) & grepl(cd[2], x))
+    if (length(idx)) out[idx] <- as.Date(x[idx], format = cd[1])
   }
-  best
+  out
 }
 
-# ── Ordinamento cronologico (data, poi ora); ordine invariato se le date non si leggono ──
+# ── Ordinamento cronologico (data, poi ora). Le righe con data illeggibile vanno in
+# ── fondo; se nessuna data è leggibile l'ordine resta invariato ───────────────
 sort_chrono <- function(df) {
   if (!"date" %in% colnames(df) || !nrow(df)) return(df)
   d <- parse_dx_date(df$date)
-  if (anyNA(d)) return(df)
+  if (all(is.na(d))) return(df)
   tm <- if ("time" %in% colnames(df)) {
     p <- strsplit(trimws(as.character(df$time)), ":", fixed = TRUE)
     vapply(p, function(z) {
@@ -1035,7 +1171,7 @@ server <- function(input, output, session) {
     df_raw = NULL, df_clean = NULL, df_trt = NULL, df_final = NULL,
     groups = NULL, error = NULL, base_name = NULL, chart_png_b64 = NULL,
     df_merged = NULL, merge_error = NULL, df_prev_preview = NULL,
-    sel_cols = NULL, trt_vals = list()
+    sel_cols = NULL, trt_vals = list(), decimal_warn = FALSE, merge_warn = 0L
   )
 
   lang <- reactive({ if (is.null(input$ui_lang)) "en" else input$ui_lang })
@@ -1098,17 +1234,21 @@ server <- function(input, output, session) {
   observeEvent(input$file_in, {
     rv$df_raw <- rv$df_clean <- rv$df_trt <- rv$df_final <- rv$groups <- rv$error <- rv$chart_png_b64 <- NULL
     rv$df_merged <- rv$merge_error <- rv$df_prev_preview <- rv$sel_cols <- NULL
-    rv$trt_vals <- list()
+    rv$trt_vals <- list(); rv$decimal_warn <- FALSE; rv$merge_warn <- 0L
     tryCatch({
       rv$df_raw    <- parse_dx_raw(input$file_in$datapath)
       rv$base_name <- sub("\\.(csv|txt)$", "", input$file_in$name, ignore.case = TRUE)
-    }, error = function(e) rv$error <- conditionMessage(e))
+      rv$decimal_warn <- has_decimal_comma(rv$df_raw)
+    }, error = function(e) { rv$df_raw <- NULL; rv$error <- conditionMessage(e) })
   })
 
   output$file_info_chip <- renderUI({
     req(rv$df_raw)
-    div(class = "file-chip",
-        paste0(input$file_in$name, " · ", t()$file_info(nrow(rv$df_raw), ncol(rv$df_raw))))
+    tagList(
+      div(class = "file-chip",
+          paste0(input$file_in$name, " · ", t()$file_info(nrow(rv$df_raw), ncol(rv$df_raw)))),
+      if (isTRUE(rv$decimal_warn)) warn_box(icon("triangle-exclamation"), " ", t()$warn_decimal)
+    )
   })
 
   # ── Stato dell'interfaccia conservato al cambio lingua ────────────────────
@@ -1181,9 +1321,13 @@ server <- function(input, output, session) {
     tryCatch({
       df   <- rv$df_raw
       keep <- input$selected_cols
-      if (is.null(keep) || !length(keep))
+      if (is.null(keep)) {            # selezione mai toccata: colonne di default
         keep <- colnames(df)[!tolower(colnames(df)) %in% tolower(DEFAULT_DROP)]
-      df      <- df[, colnames(df)[colnames(df) %in% keep], drop = FALSE]
+      } else if (!length(keep)) {     # "Deseleziona tutte": errore esplicito, non i default
+        rv$error <- "err_no_cols"
+        return()
+      }
+      df      <- df[, colnames(df)[colnames(df) %in% unlist(keep)], drop = FALSE]
       df      <- apply_rename(df)
       grp_col <- grep("^group$", colnames(df), ignore.case = TRUE, value = TRUE)
       if (!length(grp_col)) grp_col <- grep("group", colnames(df), ignore.case = TRUE, value = TRUE)
@@ -1214,16 +1358,19 @@ server <- function(input, output, session) {
     tx <- t()
     if (!is.null(rv$error) && is.null(rv$df_clean)) {
       div(class = "dx-card",
-        div(style = "color:#991B1B; font-size:.9rem;", icon("circle-exclamation"), " ", rv$error))
+        div(style = "color:#991B1B; font-size:.9rem;", icon("circle-exclamation"), " ", err_text(tx, rv$error)))
     } else if (!is.null(rv$df_clean)) {
       df      <- rv$df_clean
       grp     <- if (!is.null(rv$groups)) length(rv$groups) else "—"
-      applied <- COL_RENAME[names(COL_RENAME) %in% tolower(colnames(rv$df_raw))]
+      # solo le rinomine delle colonne effettivamente presenti nel file pulito
+      applied <- COL_RENAME[names(COL_RENAME) %in% tolower(colnames(rv$df_raw)) &
+                              unname(COL_RENAME) %in% colnames(df)]
       chips   <- lapply(names(applied), function(old)
         div(class = "rename-chip", span(old), span(class = "arr", "→"), span(class = "to", applied[[old]]))
       )
       div(class = "dx-card",
         p(class = "section-label", tx$summary),
+        if (is.null(rv$groups)) warn_box(icon("triangle-exclamation"), " ", tx$warn_no_group),
         if (length(chips)) tagList(
           p(style = "font-size:.82rem; color:#6B7280; margin-bottom:.4rem;", tx$renamed_lbl),
           div(class = "rename-chips", chips),
@@ -1277,14 +1424,14 @@ server <- function(input, output, session) {
       grp_col <- grep("^group$", colnames(df), ignore.case = TRUE, value = TRUE)
       if (!length(grp_col)) grp_col <- grep("group", colnames(df), ignore.case = TRUE, value = TRUE)
       grp_col <- grp_col[1]
-      trt_map <- setNames(
-        vapply(rv$groups, function(g) {
-          val <- rv$trt_vals[[as.character(g)]]
-          if (is.null(val) || trimws(val) == "") as.character(g) else trimws(val)
-        }, character(1)),
-        rv$groups
-      )
-      df$treatment <- trt_map[df[[grp_col]]]
+      trt_lab <- vapply(rv$groups, function(g) {
+        val <- rv$trt_vals[[as.character(g)]]
+        if (!is.null(val) && trimws(val) != "") trimws(val)
+        else if (nzchar(g)) as.character(g)
+        else "(blank)"                      # riga con gruppo vuoto: mai treatment = NA
+      }, character(1), USE.NAMES = FALSE)
+      # lookup per posizione (match), non per nome: funziona anche con gruppo vuoto
+      df$treatment <- trt_lab[match(df[[grp_col]], rv$groups)]
       grp_pos  <- which(colnames(df) == grp_col)
       rest     <- setdiff(colnames(df), c(colnames(df)[seq_len(grp_pos)], "treatment"))
       rv$df_trt <- df[, c(colnames(df)[seq_len(grp_pos)], "treatment", rest), drop = FALSE]
@@ -1434,25 +1581,22 @@ server <- function(input, output, session) {
     sel_params <- current_chart_params(get_available_chart_params(rv$df_final))
     if (!length(sel_params)) return(NULL)
 
-    is_long <- "parameter" %in% colnames(rv$df_final) && "value" %in% colnames(rv$df_final)
-
-    plot_df <- if (is_long) {
-      base <- rv$df_final[rv$df_final$parameter %in% sel_params, , drop = FALSE]
-      id_cols <- setdiff(colnames(base), c("parameter", "value"))
-      wide <- reshape(base, idvar = id_cols, timevar = "parameter",
-                       direction = "wide", v.names = "value")
-      colnames(wide) <- sub("^value\\.", "", colnames(wide))
-      wide
-    } else rv$df_final
-
+    # Il grafico lavora direttamente su wide o long (param_values): nessuna
+    # ricostruzione del wide, quindi nessuna riga persa.
     tmpfile <- tempfile(fileext = ".png")
     n_p     <- length(sel_params)
     n_col   <- if (n_p > 1) 2 else 1
     n_row   <- ceiling(n_p / n_col)
     png(tmpfile, width = 5.2 * n_col, height = 4.6 * n_row, units = "in", res = 300)
-    draw_bar_chart(plot_df, sel_params, ylab = t()$chart_ylab, is_dark = FALSE,
-                    show_jitter = isTRUE(input$show_jitter))
-    dev.off()
+    drawn <- tryCatch({
+      draw_bar_chart(rv$df_final, sel_params, ylab = t()$chart_ylab, is_dark = FALSE,
+                     show_jitter = isTRUE(input$show_jitter))
+      TRUE
+    }, error = function(e) {
+      showNotification(paste(t()$status_error, conditionMessage(e)), type = "error")
+      FALSE
+    }, finally = dev.off())      # il device PNG viene chiuso anche in caso di errore
+    if (!drawn) { unlink(tmpfile); return(NULL) }
 
     raw_bytes <- readBin(tmpfile, "raw", file.info(tmpfile)$size)
     rv$chart_png_b64 <- base64_encode_raw(raw_bytes)
@@ -1514,6 +1658,7 @@ server <- function(input, output, session) {
   # Carica preview file precedente appena viene scelto il file
   observeEvent(input$merge_file_in, {
     rv$df_prev_preview <- rv$df_merged <- rv$merge_error <- NULL
+    rv$merge_warn <- 0L
     tryCatch({
       rv$df_prev_preview <- read_cleanex_csv(input$merge_file_in$datapath)
     }, error = function(e) rv$merge_error <- t()$merge_err_read)
@@ -1538,6 +1683,7 @@ server <- function(input, output, session) {
   observeEvent(input$merge_btn, {
     req(rv$df_final, rv$df_prev_preview)
     rv$df_merged <- rv$merge_error <- NULL
+    rv$merge_warn <- 0L
     tryCatch({
       df_prev   <- rv$df_prev_preview
       cols_curr <- colnames(rv$df_final)
@@ -1549,6 +1695,9 @@ server <- function(input, output, session) {
       df_prev <- df_prev[, cols_curr, drop = FALSE]
       df_curr <- rv$df_final
       df_curr[] <- lapply(df_curr, function(x) ifelse(is.na(x), "", as.character(x)))
+      # righe del file corrente già presenti (identiche) nel file precedente
+      row_key <- function(d) do.call(paste, c(unname(as.list(d)), sep = "\001"))
+      rv$merge_warn <- sum(row_key(df_curr) %in% row_key(df_prev))
       rv$df_merged <- sort_chrono(rbind(df_prev, df_curr))
     }, error = function(e) {
       rv$merge_error <- t()$merge_err_read
@@ -1562,8 +1711,11 @@ server <- function(input, output, session) {
     } else if (!is.null(rv$df_merged)) {
       n1 <- nrow(rv$df_final)
       n2 <- nrow(rv$df_merged) - n1
-      div(style = "margin-top:.8rem; padding:.7rem 1rem; background:#D1FAE5; border:1px solid #6EE7B7; border-radius:6px; font-size:.9rem; color:#065F46;",
-        t()$merge_ok(n2, n1))
+      tagList(
+        div(style = "margin-top:.8rem; padding:.7rem 1rem; background:#D1FAE5; border:1px solid #6EE7B7; border-radius:6px; font-size:.9rem; color:#065F46;",
+          t()$merge_ok(n2, n1)),
+        if (rv$merge_warn > 0L) warn_box(icon("triangle-exclamation"), " ", t()$merge_warn_dup(rv$merge_warn))
+      )
     }
   })
 
