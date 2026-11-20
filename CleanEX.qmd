@@ -109,7 +109,7 @@ PARAM_COLS <- c("Chl", "Flav", "Anth", "NBI")
 META_COLS <- c("date", "time", "temp", "group", "treatment", "measure", "face",
                "longitude", "latitude", "altitude", "qual_sat", "etal")
 
-APP_VERSION <- "v.1.1"
+APP_VERSION <- "v.1.2"
 
 # ── Valori mancanti e numeri ──────────────────────────────────────────────────
 # Il Dualex scrive "NaN"/"nan" quando una misura non è valida: un singolo valore

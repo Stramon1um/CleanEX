@@ -2,7 +2,7 @@
 
 All notable changes to CleanEX are documented in this file.
 
-## [Unreleased]
+## [1.2] - 2026-11-20
 
 ### Added
 
