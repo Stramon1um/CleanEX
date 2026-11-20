@@ -16,7 +16,7 @@ Your data never leave your computer. The file you load is processed locally by R
 
 ## Workflow
 
-1. **Load** the file exported by the Dualex (`.txt` or `.csv`). Null bytes and `#Groupe` comment blocks are removed automatically.
+1. **Load** the file exported by the Dualex (`.txt` or `.csv`), or click **Try with example data** to load a built-in synthetic dataset. Null bytes and `#Groupe` comment blocks are removed automatically.
 2. **Select columns** to keep. GPS coordinates (`longitude`, `latitude`, `altitude`), `qual_sat` and `etal` are excluded by default and can be added back with one click.
 3. **Clean**: the French column names are translated (`jj/mm/aaaa` → `date`, `hh:mm:ss` → `time`, `groupe` → `group`, `mesure` → `measure`). Download the cleaned file.
 4. **Assign treatments** to measurement groups: one text field per Dualex group; if left blank, the group number is used.
@@ -84,7 +84,7 @@ The site in `docs/` is published with GitHub Pages.
 
 ## Example file and tests
 
-[`tests/data/example_dualex.csv`](tests/data/example_dualex.csv) is a small synthetic file (invented measurements, 4 groups of 6 leaves) in the same format as a real Dualex export, including `#Groupe` summary blocks and a few `NaN` readings. You can load it in the app to try the workflow.
+[`tests/data/example_dualex.csv`](tests/data/example_dualex.csv) is a small synthetic file (invented measurements, 4 groups of 6 leaves) in the same format as a real Dualex export, including `#Groupe` summary blocks and a few `NaN` readings. It is also built into the app: the **Try with example data** link in step 1 loads it, so you can try the workflow without a Dualex file. The built-in copy is checked against this file by the tests.
 
 The same file drives the regression tests, which extract the app code straight from `CleanEX.qmd` and run it, including the Shiny server logic, in plain R (packages `shiny` and `bslib`):
 

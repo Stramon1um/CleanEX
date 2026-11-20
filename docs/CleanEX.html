@@ -240,6 +240,56 @@ META_COLS &lt;- c("date", "time", "temp", "group", "treatment", "measure", "face
 
 APP_VERSION &lt;- "v.1.2"
 
+# ── Dati di esempio sintetici, non misure reali ──────────────────────────────
+# Stesso contenuto di tests/data/example_dualex.csv (verificato dai test).
+EXAMPLE_DUALEX &lt;- c(
+  "#Model.......:Dx4.5",
+  "#SN..........:00_000",
+  "#version.....:Sci. Flav/Anth",
+  "#software....:3.0.0",
+  "#jj/mm/aaaa;hh:mm:ss;longitude;latitude;altitude;qual_sat;temp;groupe;mesure;face;Chl;Flav;Anth;NBI;Etal",
+  "16/07/2026;09:58:05;;;;;28.07;1;1;sup;34.592;1.443;0.151;23.97;NEW",
+  "16/07/2026;09:58:11;;;;;28.04;1;2;sup;31.213;1.284;0.195;24.31;",
+  "16/07/2026;09:58:16;;;;;28.01;1;3;sup;34.665;1.122;0.155;30.90;",
+  "16/07/2026;09:58:23;;;;;27.98;1;4;sup;36.860;1.092;0.142;NaN;",
+  "16/07/2026;09:58:32;;;;;27.95;1;5;sup;32.935;1.432;0.164;22.99;",
+  "16/07/2026;09:58:38;;;;;27.92;1;6;sup;22.679;1.498;0.141;15.14;",
+  "#Groupe;Chl;Chl_sd;Flav;Flav_sd;Anth;Anth_sd;NBI;NBI_sd",
+  "1;32.157;5.013;1.312;0.174;0.158;0.020;25.179;6.546",
+  "",
+  "#jj/mm/aaaa;hh:mm:ss;longitude;latitude;altitude;qual_sat;temp;groupe;mesure;face;Chl;Flav;Anth;NBI;Etal",
+  "16/07/2026;09:58:48;;;;;27.89;2;1;sup;41.807;1.458;0.161;28.66;",
+  "16/07/2026;09:58:57;;;;;27.86;2;2;sup;34.709;1.161;0.097;29.88;",
+  "16/07/2026;09:59:04;;;;;27.83;2;3;sup;33.152;NaN;0.213;27.50;",
+  "16/07/2026;09:59:14;;;;;27.80;2;4;sup;39.105;1.109;0.165;35.27;",
+  "16/07/2026;09:59:20;;;;;27.77;2;5;sup;32.765;1.192;0.167;27.48;",
+  "16/07/2026;09:59:25;;;;;27.74;2;6;sup;36.108;1.231;0.139;29.33;",
+  "#Groupe;Chl;Chl_sd;Flav;Flav_sd;Anth;Anth_sd;NBI;NBI_sd",
+  "2;36.274;3.554;1.226;0.121;0.157;0.038;29.690;2.900",
+  "",
+  "#jj/mm/aaaa;hh:mm:ss;longitude;latitude;altitude;qual_sat;temp;groupe;mesure;face;Chl;Flav;Anth;NBI;Etal",
+  "16/07/2026;09:59:34;;;;;27.71;3;1;sup;42.481;0.899;0.135;47.26;",
+  "16/07/2026;09:59:46;;;;;27.68;3;2;sup;39.566;1.317;nan;30.05;",
+  "16/07/2026;09:59:56;;;;;27.65;3;3;sup;42.910;0.983;0.142;43.66;",
+  "16/07/2026;10:00:06;;;;;27.62;3;4;sup;43.929;1.113;0.158;39.45;",
+  "16/07/2026;10:00:14;;;;;27.59;3;5;sup;41.644;1.114;0.139;NaN;",
+  "16/07/2026;10:00:24;;;;;27.56;3;6;sup;40.898;1.128;0.167;36.26;",
+  "#Groupe;Chl;Chl_sd;Flav;Flav_sd;Anth;Anth_sd;NBI;NBI_sd",
+  "3;41.905;1.549;1.092;0.143;0.146;0.013;39.012;6.006",
+  "",
+  "#jj/mm/aaaa;hh:mm:ss;longitude;latitude;altitude;qual_sat;temp;groupe;mesure;face;Chl;Flav;Anth;NBI;Etal",
+  "16/07/2026;10:00:29;;;;;27.53;4;1;sup;31.344;1.089;0.158;28.77;",
+  "16/07/2026;10:00:34;;;;;27.50;4;2;sup;29.116;1.138;0.172;25.58;",
+  "16/07/2026;10:00:39;;;;;27.47;4;3;sup;21.790;1.116;0.177;19.53;",
+  "16/07/2026;10:00:45;;;;;27.44;4;4;sup;24.372;1.087;0.173;22.42;",
+  "16/07/2026;10:00:50;;;;;27.41;4;5;sup;28.275;0.716;0.164;39.50;",
+  "16/07/2026;10:01:00;;;;;27.38;4;6;sup;26.774;1.013;0.146;26.42;",
+  "#Groupe;Chl;Chl_sd;Flav;Flav_sd;Anth;Anth_sd;NBI;NBI_sd",
+  "4;26.945;3.437;1.027;0.158;0.165;0.011;27.038;6.905",
+  "",
+  "#jj/mm/aaaa;hh:mm:ss;longitude;latitude;altitude;qual_sat;temp;groupe;mesure;face;Chl;Flav;Anth;NBI;Etal"
+)
+
 # ── Valori mancanti e numeri ──────────────────────────────────────────────────
 # Il Dualex scrive "NaN"/"nan" quando una misura non è valida: un singolo valore
 # di questo tipo non deve far scartare l'intera colonna dai parametri.
@@ -357,6 +407,8 @@ TR &lt;- list(
     merge_err_read  = "Errore: impossibile leggere il file. Verifica che sia un CSV esportato da CleanEX (separatore virgola, prima riga con i nomi delle colonne).",
     merge_preview_curr = "Anteprima file corrente (prime 5 righe):",
     merge_preview_prev = "Anteprima file precedente (prime 5 righe):",
+    example_btn     = "Prova con dati di esempio",
+    example_note    = "Dati di esempio sintetici, non misure reali.",
     err_not_dualex  = "Il file non sembra un'esportazione Dualex: l'intestazione delle colonne (riga 5) non è stata trovata.",
     err_no_data     = "Il file non contiene righe di misura.",
     err_no_cols     = "Nessuna colonna selezionata: seleziona almeno una colonna al passo 2.",
@@ -434,6 +486,8 @@ TR &lt;- list(
     merge_err_read  = "Error: the file could not be read. Make sure it is a CSV exported from CleanEX (comma separator, first row with column names).",
     merge_preview_curr = "Current file preview (first 5 rows):",
     merge_preview_prev = "Previous file preview (first 5 rows):",
+    example_btn     = "Try with example data",
+    example_note    = "Synthetic example data, not real measurements.",
     err_not_dualex  = "The file does not look like a Dualex export: the column header (line 5) was not found.",
     err_no_data     = "The file contains no measurement rows.",
     err_no_cols     = "No column selected: select at least one column in step 2.",
@@ -511,6 +565,8 @@ TR &lt;- list(
     merge_err_read  = "Error: no se puede leer el archivo. Compruebe que sea un CSV exportado desde CleanEX (separador coma, primera fila con los nombres de las columnas).",
     merge_preview_curr = "Vista previa del archivo actual (primeras 5 filas):",
     merge_preview_prev = "Vista previa del archivo anterior (primeras 5 filas):",
+    example_btn     = "Probar con datos de ejemplo",
+    example_note    = "Datos de ejemplo sintéticos, no mediciones reales.",
     err_not_dualex  = "El archivo no parece una exportación del Dualex: no se encontró la cabecera de columnas (línea 5).",
     err_no_data     = "El archivo no contiene filas de medición.",
     err_no_cols     = "Ninguna columna seleccionada: seleccione al menos una columna en el paso 2.",
@@ -588,6 +644,8 @@ TR &lt;- list(
     merge_err_read  = "Erreur : impossible de lire le fichier. Vérifiez qu'il s'agit d'un CSV exporté depuis CleanEX (séparateur virgule, première ligne avec les noms des colonnes).",
     merge_preview_curr = "Aperçu du fichier actuel (5 premières lignes) :",
     merge_preview_prev = "Aperçu du fichier précédent (5 premières lignes) :",
+    example_btn     = "Essayer avec des données d'exemple",
+    example_note    = "Données d'exemple synthétiques, pas de vraies mesures.",
     err_not_dualex  = "Le fichier ne ressemble pas à un export Dualex : l'en-tête des colonnes (ligne 5) est introuvable.",
     err_no_data     = "Le fichier ne contient aucune ligne de mesure.",
     err_no_cols     = "Aucune colonne sélectionnée : sélectionnez au moins une colonne à l'étape 2.",
@@ -998,6 +1056,7 @@ ui &lt;- page_fluid(
     .toggle-actions { display: flex; gap: .8rem; margin-bottom: .9rem; }
     .link-btn { background: none; border: none; padding: 0; font-size: .85rem; color: #2D6A4F; font-weight: 600; cursor: pointer; text-decoration: underline; }
     .link-btn:hover { color: #1C4430; }
+    #example_btn { display: inline-block; margin-top: .6rem; font-size: .92rem; font-weight: 600; color: #2D6A4F; }
     .badge-idle  { background: #E9ECF0; color: #4B5563; }
     .badge-ok    { background: #D1FAE5; color: #065F46; }
     .badge-error { background: #FEE2E2; color: #991B1B; }
@@ -1117,6 +1176,7 @@ ui &lt;- page_fluid(
     body.dark .toggle-meta { color: #7A9975; }
     body.dark .link-btn { color: #6FCF7F; }
     body.dark .link-btn:hover { color: #A8E0A0; }
+    body.dark #example_btn { color: #6FCF7F; }
     body.dark #clean_btn { background: #3A6B35; } body.dark #clean_btn:hover { background: #4A8A44; }
     body.dark #trt_btn   { background: #1D4ED8; } body.dark #trt_btn:hover   { background: #2563EB; }
     body.dark #chart_btn { background: #0E7490; } body.dark #chart_btn:hover { background: #155E75; }
@@ -1300,7 +1360,8 @@ server &lt;- function(input, output, session) {
     df_raw = NULL, df_clean = NULL, df_trt = NULL, df_final = NULL,
     groups = NULL, error = NULL, base_name = NULL, chart_png_b64 = NULL,
     df_merged = NULL, merge_error = NULL, df_prev_preview = NULL,
-    sel_cols = NULL, trt_vals = list(), decimal_warn = FALSE, merge_warn = 0L
+    sel_cols = NULL, trt_vals = list(), decimal_warn = FALSE, merge_warn = 0L,
+    is_example = FALSE, file_name = NULL
   )
 
   lang &lt;- reactive({ if (is.null(input$ui_lang)) "en" else input$ui_lang })
@@ -1356,26 +1417,41 @@ server &lt;- function(input, output, session) {
       fileInput("file_in", label = NULL,
                 accept = c(".txt", ".csv", "text/plain", "text/csv"),
                 placeholder = tx$file_placeholder, buttonLabel = tx$file_btn),
+      actionLink("example_btn", tx$example_btn, icon = icon("seedling")),
       uiOutput("file_info_chip")
     )
   })
 
-  observeEvent(input$file_in, {
+  # Carica un file Dualex (o i dati di esempio) e azzera tutto lo stato a valle
+  load_data &lt;- function(path, name, is_example = FALSE) {
     rv$df_raw &lt;- rv$df_clean &lt;- rv$df_trt &lt;- rv$df_final &lt;- rv$groups &lt;- rv$error &lt;- rv$chart_png_b64 &lt;- NULL
     rv$df_merged &lt;- rv$merge_error &lt;- rv$df_prev_preview &lt;- rv$sel_cols &lt;- NULL
     rv$trt_vals &lt;- list(); rv$decimal_warn &lt;- FALSE; rv$merge_warn &lt;- 0L
+    rv$is_example &lt;- is_example; rv$file_name &lt;- name
     tryCatch({
-      rv$df_raw    &lt;- parse_dx_raw(input$file_in$datapath)
-      rv$base_name &lt;- sub("\\.(csv|txt)$", "", input$file_in$name, ignore.case = TRUE)
+      rv$df_raw    &lt;- parse_dx_raw(path)
+      rv$base_name &lt;- sub("\\.(csv|txt)$", "", name, ignore.case = TRUE)
       rv$decimal_warn &lt;- has_decimal_comma(rv$df_raw)
     }, error = function(e) { rv$df_raw &lt;- NULL; rv$error &lt;- conditionMessage(e) })
+  }
+
+  observeEvent(input$file_in, {
+    load_data(input$file_in$datapath, input$file_in$name)
+  })
+
+  observeEvent(input$example_btn, {
+    f &lt;- tempfile(fileext = ".csv")
+    writeLines(EXAMPLE_DUALEX, f)
+    load_data(f, "example_dualex.csv", is_example = TRUE)
+    unlink(f)
   })
 
   output$file_info_chip &lt;- renderUI({
     req(rv$df_raw)
     tagList(
       div(class = "file-chip",
-          paste0(input$file_in$name, " · ", t()$file_info(nrow(rv$df_raw), ncol(rv$df_raw)))),
+          paste0(rv$file_name, " · ", t()$file_info(nrow(rv$df_raw), ncol(rv$df_raw)))),
+      if (isTRUE(rv$is_example)) p(class = "chart-hint", style = "margin:.4rem 0 0;", t()$example_note),
       if (isTRUE(rv$decimal_warn)) warn_box(icon("triangle-exclamation"), " ", t()$warn_decimal)
     )
   })

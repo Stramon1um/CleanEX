@@ -244,5 +244,28 @@ app_test(testServer(server, {
 }))
 
 # ══════════════════════════════════════════════════════════════════════════════
+section("9. Dati di esempio incorporati nell'app (pulsante 'Prova con dati di esempio')")
+check("EXAMPLE_DUALEX identico a tests/data/example_dualex.csv", identical(EXAMPLE_DUALEX, readLines(EXAMPLE, encoding = "UTF-8")))
+check("il link compare nel passo 1, in tutte le lingue", {
+  ok <- TRUE
+  for (lg in c("it", "en", "es", "fr")) testServer(server, { session$setInputs(ui_lang = lg); ok <<- ok && grepl("example_btn", page_html(output$step1_panel)) && grepl(TR[[lg]]$example_btn, page_html(output$step1_panel), fixed = TRUE) })
+  ok })
+app_test(testServer(server, {
+  session$setInputs(ui_lang = "en")
+  check("all'avvio nessun dato caricato (il link non scatta da solo)", is.null(rv$df_raw) && !isTRUE(rv$is_example))
+  session$setInputs(example_btn = 1)
+  check("esempio: 24 misure, nome 'example_dualex', avviso 'sintetici' visibile", !is.null(rv$df_raw) && nrow(rv$df_raw) == 24 && rv$base_name == "example_dualex" && isTRUE(rv$is_example) &&
+          grepl(TR$en$example_note, page_html(output$file_info_chip), fixed = TRUE) && grepl("example_dualex.csv", page_html(output$file_info_chip), fixed = TRUE))
+  session$setInputs(selected_cols = default_cols(rv), clean_btn = 1, trt_btn = 1, pivot_long = TRUE, pivot_btn = 1)
+  check("flusso completo sull'esempio: long con 96 righe e 4 parametri", nrow(rv$df_final) == 96 && setequal(unique(rv$df_final$parameter), PARAM_COLS))
+  session$setInputs(chart_params = PARAM_COLS, show_jitter = FALSE, chart_btn = 1)
+  check("grafico generato dall'esempio", !is.null(rv$chart_png_b64))
+  session$setInputs(example_btn = 2)
+  check("ricaricando l'esempio lo stato a valle viene azzerato", is.null(rv$df_final) && is.null(rv$chart_png_b64) && nrow(rv$df_raw) == 24)
+  session$setInputs(file_in = upload(EXAMPLE))
+  check("caricando un file l'avviso 'esempio' sparisce e compare il nome del file", !isTRUE(rv$is_example) && !grepl(TR$en$example_note, page_html(output$file_info_chip), fixed = TRUE) && grepl("example_dualex.csv", page_html(output$file_info_chip), fixed = TRUE))
+}))
+
+# ══════════════════════════════════════════════════════════════════════════════
 cat(sprintf("\n==== %d superati, %d falliti ====\n", N_PASS, N_FAIL))
 if (N_FAIL > 0) quit(status = 1)

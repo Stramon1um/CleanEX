@@ -2,6 +2,12 @@
 
 All notable changes to CleanEX are documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- **Example data**: a "Try with example data" link in step 1 loads a built-in synthetic Dualex dataset (4 groups, 24 measurements, with `NaN` readings), so the app can be tried without a Dualex file. A note states that the data are synthetic. Available in the four languages and checked against `tests/data/example_dualex.csv` by the tests.
+
 ## [1.2] - 2026-11-20
 
 ### Added
